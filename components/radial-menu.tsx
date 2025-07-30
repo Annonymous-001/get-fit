@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Dumbbell, Utensils, Droplets, Moon, Smile } from "lucide-react"
+import { Dumbbell, Utensils, Droplets, Moon, Activity, Scale } from "lucide-react"
 
 interface RadialMenuProps {
   isVisible: boolean
@@ -19,20 +19,27 @@ export default function RadialMenu({ isVisible, onClose, centerPosition }: Radia
       label: "Workout",
       color: "bg-gradient-to-r from-red-400 to-red-600",
       hoverColor: "hover:from-red-500 hover:to-red-700",
-      action: () => console.log("Start workout"),
+      action: () => console.log("Start workout tracking"),
     },
     {
       icon: Utensils,
-      label: "Meal",
+      label: "Food",
       color: "bg-gradient-to-r from-green-400 to-green-600",
       hoverColor: "hover:from-green-500 hover:to-green-700",
-      action: () => console.log("Log meal"),
+      action: () => console.log("Log food"),
+    },
+    {
+      icon: Scale,
+      label: "Weight",
+      color: "bg-gradient-to-r from-blue-400 to-blue-600",
+      hoverColor: "hover:from-blue-500 hover:to-blue-700",
+      action: () => console.log("Log weight"),
     },
     {
       icon: Droplets,
       label: "Water",
-      color: "bg-gradient-to-r from-blue-400 to-blue-600",
-      hoverColor: "hover:from-blue-500 hover:to-blue-700",
+      color: "bg-gradient-to-r from-cyan-400 to-cyan-600",
+      hoverColor: "hover:from-cyan-500 hover:to-cyan-700",
       action: () => console.log("Log water"),
     },
     {
@@ -43,11 +50,11 @@ export default function RadialMenu({ isVisible, onClose, centerPosition }: Radia
       action: () => console.log("Log sleep"),
     },
     {
-      icon: Smile,
-      label: "Mood",
-      color: "bg-gradient-to-r from-yellow-400 to-orange-500",
-      hoverColor: "hover:from-yellow-500 hover:to-orange-600",
-      action: () => console.log("Log mood"),
+      icon: Activity,
+      label: "Other",
+      color: "bg-gradient-to-r from-orange-400 to-orange-600",
+      hoverColor: "hover:from-orange-500 hover:to-orange-700",
+      action: () => console.log("Log other metrics"),
     },
   ]
 
@@ -123,6 +130,16 @@ export default function RadialMenu({ isVisible, onClose, centerPosition }: Radia
               >
                 <Icon className="h-6 w-6 text-white" />
               </Button>
+              
+              {/* Label */}
+              {/* <div
+                className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/80 text-white text-xs rounded-md whitespace-nowrap transition-all duration-200 ${
+                  isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                }`}
+                style={{ transitionDelay: isVisible ? `${delay + 100}ms` : "0ms" }}
+              >
+                {action.label}
+              </div> */}
             </div>
           )
         })}

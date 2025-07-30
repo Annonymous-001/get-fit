@@ -16,14 +16,68 @@ import {
   MoreHorizontal,
   MapPin,
   Clock,
+  Plus,
+  Target,
+  ChevronRight,
 } from "lucide-react"
 
-export default function HomePage() {
-  const insightCards = [
-    { icon: Footprints, label: "Steps", value: "8,247", target: "10,000", color: "text-light-blue" },
-    { icon: Calendar, label: "Streak", value: "12", target: "days", color: "text-bright-blue" },
-    { icon: Flame, label: "Calories", value: "1,847", target: "2,200", color: "text-light-blue" },
-    { icon: Droplets, label: "Water", value: "6", target: "8 cups", color: "text-bright-blue" },
+interface HomePageProps {
+  onNavigateToPage?: (page: string) => void
+  onNavigateToTab?: (tab: string) => void
+}
+
+export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePageProps) {
+  const goalWidgets = [
+    {
+      icon: Flame,
+      label: "Calorie Intake",
+      value: "1200",
+      target: "2000",
+      unit: "kcal",
+      subtext: "+200 kcal surplus",
+      color: "text-bright-blue",
+      bgColor: "bg-bright-blue/10",
+      progress: 60,
+    },
+    {
+      icon: Flame,
+      label: "Active Calories",
+      value: "800",
+      target: "1000",
+      unit: "kcal",
+      subtext: "BMR: 1600 kcal",
+      color: "text-light-blue",
+      bgColor: "bg-light-blue/10",
+      progress: 80,
+    },
+    {
+      icon: Footprints,
+      label: "Steps Walked",
+      value: "5400",
+      target: "8000",
+      unit: "steps",
+      subtext: "",
+      color: "text-bright-blue",
+      bgColor: "bg-bright-blue/10",
+      progress: 67.5,
+    },
+    {
+      icon: Droplets,
+      label: "Water Intake",
+      value: "1000",
+      target: "3000",
+      unit: "ml",
+      subtext: "",
+      color: "text-light-blue",
+      bgColor: "bg-light-blue/10",
+      progress: 33.3,
+    },
+  ]
+
+  const userGoals = [
+    { id: 1, title: "Lose 10 lbs", progress: 60, target: "10 lbs", current: "6 lbs", icon: "⚖️" },
+    { id: 2, title: "Run 5K", progress: 80, target: "5K", current: "4K", icon: "🏃‍♀️" },
+    { id: 3, title: "Build Muscle", progress: 45, target: "5 lbs", current: "2.25 lbs", icon: "💪" },
   ]
 
   const challenges = [
@@ -322,23 +376,117 @@ export default function HomePage() {
         <p className="text-medium-gray dark:text-dark-muted text-sm">Ready to crush your goals today?</p>
       </div>
 
-      {/* Insight Cards */}
+      {/* Goal Widgets */}
       <div className="grid grid-cols-2 gap-3">
-        {insightCards.map((card, index) => {
-          const Icon = card.icon
+        {goalWidgets.map((widget, index) => {
+          const Icon = widget.icon
           return (
-            <Card key={index} className="bg-dark-gradient p-4 border-0 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <Icon className={`h-5 w-5 ${card.color}`} />
-                <span className="text-xs text-light-blue">{card.target}</span>
+            <Card 
+              key={index} 
+              className="bg-white dark:bg-dark-card p-4 border border-border-gray dark:border-dark-border hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
+                switch (widget.label) {
+                  case "Calorie Intake":
+                    onNavigateToPage?.("food")
+                    break
+                  case "Active Calories":
+                    onNavigateToPage?.("workout")
+                    break
+                  case "Steps Walked":
+                    onNavigateToPage?.("workout")
+                    break
+                  case "Water Intake":
+                    onNavigateToPage?.("water")
+                    break
+                  default:
+                    break
+                }
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 rounded-full ${widget.bgColor} flex items-center justify-center`}>
+                  <Icon className={`h-5 w-5 ${widget.color}`} />
+                </div>
+                <span className="text-xs text-medium-gray dark:text-dark-muted">{widget.target} {widget.unit}</span>
               </div>
-              <div className="space-y-1">
-                <p className="text-2xl font-light">{card.value}</p>
-                <p className="text-xs text-light-blue">{card.label}</p>
+              <div className="space-y-2">
+                <div className="flex items-baseline space-x-1">
+                  <p className="text-2xl font-light text-deep-navy dark:text-dark-text">{widget.value}</p>
+                  <span className="text-sm text-medium-gray dark:text-dark-muted">/ {widget.target}</span>
+                </div>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">{widget.label}</p>
+                
+                {/* Progress Bar */}
+                <div className="w-full bg-light-gray dark:bg-dark-bg rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all duration-300 ${widget.color.replace('text-', 'bg-')}`}
+                    style={{ width: `${widget.progress}%` }}
+                  />
+                </div>
+                
+                {/* Subtext */}
+                {widget.subtext && (
+                  <p className="text-xs text-bright-blue font-medium">{widget.subtext}</p>
+                )}
+                
+                {/* Quick Add Button for Water */}
+                {widget.label === "Water Intake" && (
+                  <Button
+                    size="sm"
+                    className="mt-2 bg-bright-blue hover:bg-bright-blue/90 text-white h-6 px-2 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    +250ml
+                  </Button>
+                )}
               </div>
             </Card>
           )
         })}
+      </div>
+
+      {/* Goal Overview Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Goal Overview</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-bright-blue"
+            onClick={() => onNavigateToPage?.("goals")}
+          >
+            See All Goals
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {userGoals.map((goal) => (
+            <Card key={goal.id} className="p-3 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center text-sm">
+                    {goal.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{goal.title}</p>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted">
+                      {goal.current} / {goal.target}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{goal.progress}%</p>
+                  <div className="w-16 bg-light-gray dark:bg-dark-bg rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-bright-blue h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Featured Challenges */}

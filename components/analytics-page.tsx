@@ -16,7 +16,12 @@ import {
   Smile,
 } from "lucide-react"
 
-export default function AnalyticsPage() {
+interface AnalyticsPageProps {
+  onNavigateToPage?: (page: string) => void
+  onNavigateToTab?: (tab: string) => void
+}
+
+export default function AnalyticsPage({ onNavigateToPage, onNavigateToTab }: AnalyticsPageProps) {
   const heroStats = [
     { label: "Current Streak", value: "12", unit: "days", icon: Calendar, color: "text-bright-blue" },
     { label: "Community Rank", value: "#247", unit: "of 10k", icon: Award, color: "text-light-blue" },
