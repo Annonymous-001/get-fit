@@ -5,9 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'GetFit - Your Personal Fitness Companion',
+  description: 'Track your fitness goals, workouts, nutrition, and health metrics with our comprehensive fitness app.',
+  generator: 'GetFit App',
 }
 
 export default function RootLayout({
@@ -27,13 +27,7 @@ html {
         `}</style>
       </head>
       <body>
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="system" 
-          enableSystem 
-          disableTransitionOnChange
-          suppressHydrationWarning
-        >
+        <ThemeProvider>
           {children}
         </ThemeProvider>
       </body>
