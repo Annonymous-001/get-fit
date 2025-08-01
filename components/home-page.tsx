@@ -19,6 +19,11 @@ import {
   Plus,
   Target,
   ChevronRight,
+  Camera,
+  Barcode,
+  Dumbbell,
+  Utensils,
+  Settings,
 } from "lucide-react"
 
 interface HomePageProps {
@@ -368,6 +373,57 @@ export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePage
     }
   }
 
+  const quickActions = [
+    {
+      icon: Camera,
+      label: "Snap Photo",
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+      onClick: () => {
+        // Handle snap photo action
+        console.log("Snap Photo clicked")
+      }
+    },
+    {
+      icon: Barcode,
+      label: "Barcode Scanner",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
+      onClick: () => {
+        // Handle barcode scanner action
+        console.log("Barcode Scanner clicked")
+      }
+    },
+    {
+      icon: Dumbbell,
+      label: "Start Workout",
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+      onClick: () => {
+        onNavigateToPage?.("workout")
+      }
+    },
+    {
+      icon: Utensils,
+      label: "Track Meal",
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+      onClick: () => {
+        onNavigateToPage?.("food")
+      }
+    },
+    {
+      icon: Settings,
+      label: "Edit",
+      color: "text-gray-600",
+      bgColor: "bg-gray-100",
+      onClick: () => {
+        // Handle edit quick actions
+        console.log("Edit Quick Actions clicked")
+      }
+    },
+  ]
+
   return (
     <div className="p-4 space-y-6">
       {/* Welcome Section */}
@@ -443,6 +499,32 @@ export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePage
             </Card>
           )
         })}
+      </div>
+
+      {/* Quick Actions Section */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Quick Actions</h2>
+        <div className="grid grid-cols-5 gap-2">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon
+            return (
+              <Card 
+                key={index} 
+                className="bg-white dark:bg-dark-card p-3 border border-border-gray dark:border-dark-border hover:shadow-md transition-shadow cursor-pointer"
+                onClick={action.onClick}
+              >
+                <div className="flex flex-col items-center space-y-2">
+                  <div className={`w-8 h-8 rounded-lg ${action.bgColor} flex items-center justify-center`}>
+                    <Icon className={`h-4 w-4 ${action.color}`} />
+                  </div>
+                  <p className="text-xs font-medium text-deep-navy dark:text-dark-text text-center leading-tight">
+                    {action.label}
+                  </p>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
       </div>
 
       {/* Goal Overview Section */}

@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Home, Target, Plus, TrendingUp, User, MessageCircle, UserCircle, Moon, Sun, Bell, Users } from "lucide-react"
+import { Home, Target, Plus, TrendingUp, User, MessageCircle, UserCircle, Moon, Sun, Bell, Users, BotMessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 
@@ -242,7 +242,7 @@ function GetFitAppContent() {
         className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-primary-gradient hover:opacity-90 shadow-lg transition-all duration-300"
         size="icon"
       >
-        <MessageCircle className="h-6 w-6 text-white" />
+        <BotMessageSquare className="h-6 w-6 text-white" />
       </Button>
 
       {/* Chatbot */}

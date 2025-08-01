@@ -1,27 +1,18 @@
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+'use client'
+
+import { useState } from "react"
 import { 
   Utensils, 
-  Dumbbell, 
   Droplets, 
   Moon, 
-  Smile, 
-  Plus, 
-  Mic, 
-  Clock, 
-  Apple, 
-  Coffee, 
-  Sandwich,
   Scale,
   Activity,
   ChevronRight,
-  Target,
-  Zap,
-  Heart,
-  Timer,
+  Plus,
+  Clock,
+  Flame,
   MapPin,
-  TrendingUp
+  X
 } from "lucide-react"
 
 interface TrackPageProps {
@@ -30,231 +21,298 @@ interface TrackPageProps {
 }
 
 export default function TrackPage({ onNavigateToPage, onNavigateToTab }: TrackPageProps) {
+  const [showModal, setShowModal] = useState(false)
+
   const activityOptions = [
     {
-      icon: Dumbbell,
-      title: "Track Workout",
-      subtitle: "Log your exercise session",
-      color: "text-red-500",
-      bgColor: "bg-red-500/10",
-      description: "Record strength training, cardio, yoga, and more",
-      features: ["Sets & Reps", "Duration", "Calories Burned", "Equipment Used"],
-    },
-    {
       icon: Utensils,
-      title: "Track Food",
-      subtitle: "Log your nutrition",
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
-      description: "Record meals, snacks, and nutritional intake",
-      features: ["Calories", "Macros", "Meal Photos", "Barcode Scanner"],
-    },
-    {
-      icon: Scale,
-      title: "Track Weight",
-      subtitle: "Monitor your progress",
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
-      description: "Track weight changes and body measurements",
-      features: ["Weight Log", "Body Fat %", "Measurements", "Progress Photos"],
-    },
-    {
-      icon: Droplets,
-      title: "Track Water",
-      subtitle: "Stay hydrated",
-      color: "text-cyan-500",
-      bgColor: "bg-cyan-500/10",
-      description: "Monitor your daily water intake",
-      features: ["Quick Add", "Reminders", "Daily Goal", "Hydration Tips"],
-    },
-    {
-      icon: Moon,
-      title: "Track Sleep",
-      subtitle: "Monitor rest quality",
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10",
-      description: "Track sleep duration and quality",
-      features: ["Sleep Hours", "Quality Score", "Sleep Cycles", "Recovery"],
+      title: "Food",
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
     },
     {
       icon: Activity,
-      title: "Track Other Metrics",
-      subtitle: "Custom tracking",
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
-      description: "Create custom metrics and track anything",
-      features: ["Custom Metrics", "Flexible Units", "Personal Goals", "Data Export"],
+      title: "Workout",
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+    {
+      icon: Scale,
+      title: "Weight",
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
+    {
+      icon: Droplets,
+      title: "Water",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
+    {
+      icon: Activity,
+      title: "Steps",
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+    {
+      icon: Moon,
+      title: "Sleep",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
     },
   ]
 
-  const quickPresets = [
-    { icon: Apple, label: "Apple", category: "Snack", calories: "95 cal" },
-    { icon: Coffee, label: "Coffee", category: "Drink", calories: "5 cal" },
-    { icon: Sandwich, label: "Sandwich", category: "Meal", calories: "350 cal" },
+  const recentActivities = [
+    {
+      id: 1,
+      type: "Food",
+      title: "Breakfast Bowl",
+      time: "8:30 AM",
+      calories: "320 cal",
+      icon: Utensils,
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
+    },
+    {
+      id: 2,
+      type: "Workout",
+      title: "Morning Run",
+      time: "6:15 AM",
+      duration: "25 min",
+      calories: "280 cal",
+      icon: Activity,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+    },
+    {
+      id: 3,
+      type: "Water",
+      title: "Water Intake",
+      time: "9:00 AM",
+      amount: "500ml",
+      icon: Droplets,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
+    {
+      id: 4,
+      type: "Weight",
+      title: "Weight Log",
+      time: "7:00 AM",
+      value: "75.2 kg",
+      icon: Scale,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+    },
   ]
 
-  const recentLogs = [
-    { type: "Meal", item: "Greek Yogurt Bowl", time: "8:30 AM", calories: "280 cal" },
-    { type: "Water", item: "2 glasses", time: "9:15 AM", amount: "500ml" },
-    { type: "Mood", item: "Energetic", time: "10:00 AM", rating: "😊" },
-  ]
+
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Header */}
-      <div className="text-center py-4">
-        <h1 className="text-2xl font-light text-deep-navy dark:text-dark-text mb-2">Add Activity</h1>
-        <p className="text-medium-gray dark:text-dark-muted text-sm">Track your fitness journey</p>
-      </div>
-
-      {/* Activity Options Grid */}
-      <div className="grid grid-cols-1 gap-4">
-        {activityOptions.map((option, index) => {
-          const Icon = option.icon
-          return (
-                          <Card
-                key={index}
-                className="p-4 border border-border-gray dark:border-dark-border hover:shadow-md transition-all duration-200 cursor-pointer bg-white dark:bg-dark-card group"
-                onClick={() => {
-                  switch (option.title) {
-                    case "Track Workout":
-                      onNavigateToPage?.("workout")
-                      break
-                    case "Track Food":
-                      onNavigateToPage?.("food")
-                      break
-                    case "Track Weight":
-                      onNavigateToPage?.("weight")
-                      break
-                    case "Track Water":
-                      onNavigateToPage?.("water")
-                      break
-                    case "Track Sleep":
-                      onNavigateToPage?.("sleep")
-                      break
-                    case "Track Other Metrics":
-                      // Could navigate to a general metrics page
-                      console.log("Track Other Metrics")
-                      break
-                    default:
-                      break
-                  }
-                }}
-              >
-              <div className="flex items-start space-x-4">
-                <div className={`w-12 h-12 rounded-xl ${option.bgColor} flex items-center justify-center flex-shrink-0`}>
-                  <Icon className={`h-6 w-6 ${option.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-deep-navy dark:text-dark-text text-lg">{option.title}</h3>
-                    <ChevronRight className="h-5 w-5 text-medium-gray group-hover:text-bright-blue transition-colors" />
-                  </div>
-                  <p className="text-sm text-medium-gray dark:text-dark-muted mb-2">{option.subtitle}</p>
-                  <p className="text-sm text-deep-navy dark:text-dark-text mb-3">{option.description}</p>
-                  
-                  {/* Features */}
-                  <div className="flex flex-wrap gap-2">
-                    {option.features.map((feature, featureIndex) => (
-                      <Badge key={featureIndex} variant="secondary" className="text-xs bg-light-gray dark:bg-dark-bg">
-                        {feature}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Quick Add Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Quick Add</h2>
-          <Button variant="ghost" size="sm" className="text-bright-blue">
-            <Mic className="h-4 w-4 mr-1" />
-            Voice
-          </Button>
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      {/* Main Content */}
+      <div className="p-4">
+        {/* Header */}
+        <div className="text-center py-4">
+          <h1 className="text-2xl font-semibold text-deep-navy dark:text-dark-text mb-2">Add Activity</h1>
+          <p className="text-medium-gray dark:text-dark-muted text-sm">Track your fitness journey</p>
         </div>
-        <div className="flex space-x-3 overflow-x-auto pb-2">
-          {quickPresets.map((preset, index) => {
-            const Icon = preset.icon
-            return (
-              <Card
-                key={index}
-                className="p-3 border border-border-gray dark:border-dark-border min-w-[120px] flex-shrink-0 cursor-pointer hover:bg-light-gray dark:hover:bg-dark-bg transition-colors bg-white dark:bg-dark-card"
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center">
-                    <Icon className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{preset.label}</p>
-                    <p className="text-xs text-medium-gray dark:text-dark-muted">{preset.category}</p>
-                    <p className="text-xs text-bright-blue">{preset.calories}</p>
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
 
-      {/* Recent Logs */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Recent Logs</h2>
-          <Button variant="ghost" size="sm" className="text-bright-blue">
-            View All
-          </Button>
+        {/* Quick Add Button */}
+        <div className="mb-6 flex justify-center">
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-6 rounded-lg shadow-md transition-all duration-200 flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Activity</span>
+          </button>
         </div>
-        <div className="space-y-2">
-          {recentLogs.map((log, index) => (
-            <Card
-              key={index}
-              className="p-3 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-subtle-accent rounded-full flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-bright-blue" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{log.item}</p>
-                    <div className="flex items-center space-x-2 text-xs text-medium-gray dark:text-dark-muted">
-                      <Badge variant="outline" className="text-xs">
-                        {log.type}
-                      </Badge>
-                      <span>{log.time}</span>
+
+        {/* Recent Activities */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-deep-navy dark:text-dark-text">Recent Activities</h2>
+            <button className="text-purple-500 hover:text-purple-600 font-medium">View All</button>
+          </div>
+          
+          <div className="space-y-3">
+            {recentActivities.map((activity) => {
+              const Icon = activity.icon
+              return (
+                <div
+                  key={activity.id}
+                  className="bg-white dark:bg-dark-card rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  onClick={() => {
+                    switch (activity.type) {
+                      case "Workout":
+                        onNavigateToPage?.("workout")
+                        break
+                      case "Food":
+                        onNavigateToPage?.("food")
+                        break
+                      case "Weight":
+                        onNavigateToPage?.("weight")
+                        break
+                      case "Water":
+                        onNavigateToPage?.("water")
+                        break
+                      case "Sleep":
+                        onNavigateToPage?.("sleep")
+                        break
+                      default:
+                        break
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-12 h-12 rounded-full ${activity.bgColor} flex items-center justify-center`}>
+                        <Icon className={`h-6 w-6 ${activity.color}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-deep-navy dark:text-dark-text">{activity.title}</h3>
+                        <div className="flex items-center space-x-2 text-sm text-medium-gray dark:text-dark-muted">
+                          <Clock className="h-4 w-4" />
+                          <span>{activity.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {activity.calories && (
+                        <div className="flex items-center space-x-1 text-sm text-purple-500">
+                          <Flame className="h-4 w-4" />
+                          <span>{activity.calories}</span>
+                        </div>
+                      )}
+                      {activity.duration && (
+                        <div className="text-sm text-medium-gray dark:text-dark-muted">{activity.duration}</div>
+                      )}
+                      {activity.amount && (
+                        <div className="text-sm text-blue-500">{activity.amount}</div>
+                      )}
+                      {activity.value && (
+                        <div className="text-sm text-green-500">{activity.value}</div>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  {log.calories && <p className="text-xs text-bright-blue">{log.calories}</p>}
-                  {log.amount && <p className="text-xs text-bright-blue">{log.amount}</p>}
-                  {log.rating && <p className="text-lg">{log.rating}</p>}
-                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-dark-card rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                <Flame className="h-5 w-5 text-orange-500" />
               </div>
-            </Card>
-          ))}
+              <div>
+                <p className="text-sm text-medium-gray dark:text-dark-muted">Today's Calories</p>
+                <p className="text-lg font-semibold text-deep-navy dark:text-dark-text">1,240</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-dark-card rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                <Activity className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-medium-gray dark:text-dark-muted">Activities</p>
+                <p className="text-lg font-semibold text-deep-navy dark:text-dark-text">4</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Activity Tips */}
-      <Card className="p-4 border border-border-gray dark:border-dark-border bg-gradient-to-r from-bright-blue/5 to-light-blue/5 dark:bg-dark-card">
-        <div className="flex items-start space-x-3">
-          <div className="w-10 h-10 bg-bright-blue/10 rounded-full flex items-center justify-center">
-            <Zap className="h-5 w-5 text-bright-blue" />
+      {/* Bottom Sheet Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
+          <div className="bg-white dark:bg-dark-card rounded-t-3xl w-full max-w-md mx-4 mb-0 shadow-2xl max-h-[60vh]">
+            {/* Handle */}
+            <div className="flex justify-center pt-4 pb-2">
+              <div className="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+            </div>
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-deep-navy dark:text-dark-text">
+                What Would You Like to Track?
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Activity Options List */}
+            <div className="px-6 py-4 overflow-y-auto max-h-[40vh]">
+              <div className="space-y-2">
+                {activityOptions.map((option, index) => {
+                  const Icon = option.icon
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setShowModal(false)
+                        switch (option.title) {
+                          case "Workout":
+                            onNavigateToPage?.("workout")
+                            break
+                          case "Food":
+                            onNavigateToPage?.("food")
+                            break
+                          case "Weight":
+                            onNavigateToPage?.("weight")
+                            break
+                          case "Water":
+                            onNavigateToPage?.("water")
+                            break
+                          case "Sleep":
+                            onNavigateToPage?.("sleep")
+                            break
+                          case "Steps":
+                            onNavigateToPage?.("workout")
+                            break
+                          default:
+                            break
+                        }
+                      }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full ${option.bgColor} flex items-center justify-center`}>
+                          <Icon className={`h-4 w-4 ${option.color}`} />
+                        </div>
+                        <span className="text-base font-medium text-deep-navy dark:text-dark-text">
+                          {option.title}
+                        </span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            {/* Bottom Spacing */}
+            <div className="h-4"></div>
           </div>
-          <div>
-            <h3 className="font-medium text-deep-navy dark:text-dark-text mb-1">Pro Tip</h3>
-            <p className="text-sm text-medium-gray dark:text-dark-muted">
-              Use voice commands to quickly log activities. Just say "Track 30 minute run" or "Log 500ml water".
-            </p>
-          </div>
+          
+          {/* Backdrop Click to Close */}
+          <div 
+            className="absolute inset-0 -z-10" 
+            onClick={() => setShowModal(false)}
+          />
         </div>
-      </Card>
+      )}
     </div>
   )
 }

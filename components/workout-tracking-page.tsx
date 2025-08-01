@@ -11,6 +11,7 @@ import {
   Clock, 
   Flame, 
   ChevronLeft,
+  ChevronRight,
   MoreHorizontal,
   Play,
   Pause,
@@ -21,7 +22,8 @@ import {
   MapPin,
   Dumbbell,
   Bike,
-  Activity
+  Activity,
+  BarChart3
 } from "lucide-react"
 
 interface WorkoutTrackingPageProps {
@@ -154,6 +156,16 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
     streak: 12
   }
 
+  const weeklyCaloriesData = [
+    { day: "Mon", calories: 180 },
+    { day: "Tue", calories: 320 },
+    { day: "Wed", calories: 0 },
+    { day: "Thu", calories: 450 },
+    { day: "Fri", calories: 280 },
+    { day: "Sat", calories: 380 },
+    { day: "Sun", calories: 220 }
+  ]
+
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
@@ -199,18 +211,44 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
         </Card>
       </div>
 
-      {/* Favorites */}
+      {/* Weekly Calories Chart */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Weekly Calories</h2>
+          <BarChart3 className="h-5 w-5 text-medium-gray" />
+        </div>
+        <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
+          <div className="flex items-end justify-between h-24 space-x-1">
+            {weeklyCaloriesData.map((data, index) => {
+              const maxCalories = Math.max(...weeklyCaloriesData.map(d => d.calories))
+              const height = maxCalories > 0 ? (data.calories / maxCalories) * 100 : 0
+              return (
+                <div key={index} className="flex flex-col items-center flex-1">
+                  <div 
+                    className={`w-full rounded-t-sm transition-all duration-300 ${
+                      data.calories > 0 ? 'bg-gradient-to-t from-orange-400 to-orange-500' : 'bg-gray-200 dark:bg-gray-700'
+                    }`}
+                    style={{ height: `${height}%` }}
+                  />
+                  <span className="text-xs text-medium-gray dark:text-dark-muted mt-2">{data.day}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* Favorites - Circular Icons */}
       <div className="space-y-3">
         <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Favorites</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {workoutActivities.filter(activity => activity.isFavorite).map((activity) => {
+        <div className="flex justify-between">
+          {workoutActivities.filter(activity => activity.isFavorite).slice(0, 5).map((activity) => {
             const Icon = activity.icon
             return (
-              <Card
+              <div
                 key={activity.id}
-                className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card hover:shadow-md transition-shadow cursor-pointer"
+                className="flex flex-col items-center space-y-2 cursor-pointer group"
                 onClick={() => {
-                  // Navigate to appropriate tracking page based on activity type
                   if (activity.name === "Strength Training") {
                     onNavigateToPage?.("strength-training")
                   } else if (["Running", "Swimming", "Cycling"].includes(activity.name)) {
@@ -218,47 +256,27 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                   }
                 }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`w-12 h-12 rounded-xl ${activity.bgColor} flex items-center justify-center`}>
-                    <Icon className={`h-6 w-6 ${activity.color}`} />
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={(e) => {
-                      e.stopPropagation() // Prevent card click when toggling favorite
-                      // Toggle favorite logic would go here
-                    }}
-                  >
-                    <Heart className="h-4 w-4 text-red-500 fill-current" />
-                  </Button>
+                <div className={`w-16 h-16 rounded-full ${activity.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-md`}>
+                  <Icon className={`h-8 w-8 ${activity.color}`} />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-deep-navy dark:text-dark-text text-sm mb-1">{activity.name}</h3>
-                  <p className="text-xs text-medium-gray dark:text-dark-muted mb-2">{activity.description}</p>
-                  <Badge variant="outline" className="text-xs">
-                    {activity.category}
-                  </Badge>
-                </div>
-              </Card>
+                <span className="text-xs font-medium text-deep-navy dark:text-dark-text text-center">{activity.name}</span>
+              </div>
             )
           })}
         </div>
       </div>
 
-      {/* All Activities */}
+      {/* All Activities - Compact Cards */}
       <div className="space-y-3">
         <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">All Activities</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
           {workoutActivities.map((activity) => {
             const Icon = activity.icon
             return (
               <Card
                 key={activity.id}
-                className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card hover:shadow-md transition-shadow cursor-pointer"
+                className="p-3 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => {
-                  // Navigate to appropriate tracking page based on activity type
                   if (activity.name === "Strength Training") {
                     onNavigateToPage?.("strength-training")
                   } else if (["Running", "Swimming", "Cycling"].includes(activity.name)) {
@@ -266,28 +284,30 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                   }
                 }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`w-12 h-12 rounded-xl ${activity.bgColor} flex items-center justify-center`}>
-                    <Icon className={`h-6 w-6 ${activity.color}`} />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full ${activity.bgColor} flex items-center justify-center`}>
+                      <Icon className={`h-5 w-5 ${activity.color}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-deep-navy dark:text-dark-text text-sm">{activity.name}</h3>
+                      <p className="text-xs text-medium-gray dark:text-dark-muted">{activity.category}</p>
+                    </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={(e) => {
-                      e.stopPropagation() // Prevent card click when toggling favorite
-                      // Toggle favorite logic would go here
-                    }}
-                  >
-                    <Heart className={`h-4 w-4 ${activity.isFavorite ? "text-red-500 fill-current" : "text-medium-gray"}`} />
-                  </Button>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-deep-navy dark:text-dark-text text-sm mb-1">{activity.name}</h3>
-                  <p className="text-xs text-medium-gray dark:text-dark-muted mb-2">{activity.description}</p>
-                  <Badge variant="outline" className="text-xs">
-                    {activity.category}
-                  </Badge>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // Toggle favorite logic would go here
+                      }}
+                    >
+                      <Heart className={`h-4 w-4 ${activity.isFavorite ? "text-red-500 fill-current" : "text-medium-gray"}`} />
+                    </Button>
+                    <ChevronRight className="h-4 w-4 text-medium-gray" />
+                  </div>
                 </div>
               </Card>
             )
