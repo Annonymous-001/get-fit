@@ -133,7 +133,7 @@ export default function WaterTrackingPage({ onNavigateToPage, onNavigateToTab }:
       </div>
 
       {/* Compact Daily Progress */}
-      <Card className="p-4 border border-border-gray dark:border-dark-border bg-gradient-to-br from-blue-50 to-cyan-50 dark:bg-dark-card">
+      <Card className="p-4 border border-border-gray dark:border-dark-border bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 dark:bg-dark-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center">
@@ -157,7 +157,7 @@ export default function WaterTrackingPage({ onNavigateToPage, onNavigateToTab }:
         </div>
         
         {/* Progress Bar */}
-        <div className="w-full bg-blue-100 dark:bg-dark-bg rounded-full h-2 mt-3">
+        <div className="w-full bg-blue-100 dark:bg-gray-700 rounded-full h-2 mt-3">
           <div
             className="bg-gradient-to-r from-blue-400 to-cyan-400 h-2 rounded-full transition-all duration-500"
             style={{ width: `${waterData.progress}%` }}
@@ -176,7 +176,7 @@ export default function WaterTrackingPage({ onNavigateToPage, onNavigateToTab }:
           // Daily view - show today's intake timeline
           <div className="space-y-3">
             {todayIntake.map((intake, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-light-gray dark:bg-dark-bg rounded-lg">
+              <div key={index} className="flex items-center justify-between p-3 bg-light-gray dark:bg-gray-800 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
                     <Droplets className="h-4 w-4 text-blue-500" />
@@ -227,7 +227,7 @@ export default function WaterTrackingPage({ onNavigateToPage, onNavigateToTab }:
                   return (
                     <div key={index} className="flex-1 text-center">
                       <div className="relative">
-                        <div className="w-full bg-blue-100 dark:bg-dark-bg rounded-t-sm h-16">
+                        <div className="w-full bg-blue-100 dark:bg-gray-700 rounded-t-sm h-16">
                           <div
                             className={`absolute bottom-0 w-full rounded-t-sm transition-all duration-300 ${
                               isToday 
@@ -323,16 +323,16 @@ export default function WaterTrackingPage({ onNavigateToPage, onNavigateToTab }:
       </Card>
 
       {/* Hydration Tips */}
-      <Card className="p-4 border border-border-gray dark:border-dark-border bg-gradient-to-r from-blue-50 to-cyan-50 dark:bg-dark-card">
+      <Card className="p-4 border border-border-gray dark:border-dark-border bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 dark:bg-dark-card">
         <div className="flex items-center space-x-2 mb-3">
           <Droplets className="h-5 w-5 text-blue-500" />
-          <h3 className="font-medium text-deep-navy dark:text-dark-text">Hydration Tips</h3>
+          <h3 className="font-medium text-deep-navy dark:text-white">Hydration Tips</h3>
         </div>
         <div className="space-y-2">
           {hydrationTips.slice(0, 3).map((tip, index) => (
             <div key={index} className="flex items-start space-x-2">
-              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0" />
-              <p className="text-sm text-deep-navy dark:text-dark-text">{tip}</p>
+              <div className="w-1.5 h-1.5 bg-blue-400 dark:bg-blue-300 rounded-full mt-2 flex-shrink-0" />
+              <p className="text-sm text-deep-navy dark:text-gray-100 leading-relaxed">{tip}</p>
             </div>
           ))}
         </div>

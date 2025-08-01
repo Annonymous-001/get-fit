@@ -112,28 +112,28 @@ export default function AnalyticsPage({ onNavigateToPage, onNavigateToTab }: Ana
 
       {/* Charts Section */}
       <Tabs defaultValue="steps" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 bg-light-gray dark:bg-dark-bg">
+        <TabsList className="grid w-full grid-cols-4 bg-light-gray dark:bg-dark-bg border border-border-gray dark:border-dark-border">
           <TabsTrigger
             value="steps"
-            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card"
+            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card data-[state=active]:text-deep-navy dark:data-[state=active]:text-dark-text"
           >
             Steps
           </TabsTrigger>
           <TabsTrigger
             value="calories"
-            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card"
+            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card data-[state=active]:text-deep-navy dark:data-[state=active]:text-dark-text"
           >
             Calories
           </TabsTrigger>
           <TabsTrigger
             value="sleep"
-            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card"
+            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card data-[state=active]:text-deep-navy dark:data-[state=active]:text-dark-text"
           >
             Sleep
           </TabsTrigger>
           <TabsTrigger
             value="mood"
-            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card"
+            className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-dark-card data-[state=active]:text-deep-navy dark:data-[state=active]:text-dark-text"
           >
             Mood
           </TabsTrigger>
@@ -141,92 +141,144 @@ export default function AnalyticsPage({ onNavigateToPage, onNavigateToTab }: Ana
 
         <TabsContent value="steps" className="space-y-4">
           <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Footprints className="h-5 w-5 text-bright-blue" />
-                <h3 className="font-medium text-deep-navy dark:text-dark-text">Daily Steps</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-deep-navy dark:text-dark-text">Weekly Total</p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Goal: 70,000 steps/week</p>
               </div>
-              <Badge variant="outline">Avg: 10,234</Badge>
+              <div className="text-right">
+                <p className="text-lg font-medium text-deep-navy dark:text-dark-text">71,620</p>
+                <p className="text-xs text-green-500">102% of goal</p>
+              </div>
             </div>
-            <div className="h-32 flex items-end justify-between space-x-1">
-              {chartData.map((data, index) => (
-                <div key={index} className="flex flex-col items-center space-y-1 flex-1">
-                  <div
-                    className="w-full bg-primary-gradient rounded-t"
-                    style={{ height: `${(data.steps / 16000) * 100}%`, minHeight: "4px" }}
-                  />
-                  <span className="text-xs text-medium-gray dark:text-dark-muted">{data.day}</span>
-                </div>
-              ))}
+            
+            <div className="flex items-end justify-between space-x-1">
+              {chartData.map((data, index) => {
+                const maxSteps = Math.max(...chartData.map(d => d.steps))
+                const height = maxSteps > 0 ? (data.steps / maxSteps) * 100 : 0
+                return (
+                  <div key={index} className="flex-1 text-center">
+                    <div className="relative">
+                      <div className="w-full bg-blue-100 dark:bg-blue-900/20 rounded-t-sm h-16">
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-blue-400 to-blue-500 rounded-t-sm transition-all duration-300"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted mt-1">{data.day}</p>
+                    <p className="text-xs text-deep-navy dark:text-dark-text font-medium">{data.steps.toLocaleString()}</p>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="calories" className="space-y-4">
           <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Flame className="h-5 w-5 text-bright-blue" />
-                <h3 className="font-medium text-deep-navy dark:text-dark-text">Calories Burned</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-deep-navy dark:text-dark-text">Weekly Total</p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Goal: 14,000 calories/week</p>
               </div>
-              <Badge variant="outline">Avg: 2,014</Badge>
+              <div className="text-right">
+                <p className="text-lg font-medium text-deep-navy dark:text-dark-text">14,100</p>
+                <p className="text-xs text-green-500">101% of goal</p>
+              </div>
             </div>
-            <div className="h-32 flex items-end justify-between space-x-1">
-              {chartData.map((data, index) => (
-                <div key={index} className="flex flex-col items-center space-y-1 flex-1">
-                  <div
-                    className="w-full bg-primary-gradient rounded-t"
-                    style={{ height: `${(data.calories / 2500) * 100}%`, minHeight: "4px" }}
-                  />
-                  <span className="text-xs text-medium-gray dark:text-dark-muted">{data.day}</span>
-                </div>
-              ))}
+            
+            <div className="flex items-end justify-between space-x-1">
+              {chartData.map((data, index) => {
+                const maxCalories = Math.max(...chartData.map(d => d.calories))
+                const height = maxCalories > 0 ? (data.calories / maxCalories) * 100 : 0
+                return (
+                  <div key={index} className="flex-1 text-center">
+                    <div className="relative">
+                      <div className="w-full bg-orange-100 dark:bg-orange-900/20 rounded-t-sm h-16">
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-orange-400 to-orange-500 rounded-t-sm transition-all duration-300"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted mt-1">{data.day}</p>
+                    <p className="text-xs text-deep-navy dark:text-dark-text font-medium">{data.calories}</p>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="sleep" className="space-y-4">
           <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Moon className="h-5 w-5 text-bright-blue" />
-                <h3 className="font-medium text-deep-navy dark:text-dark-text">Sleep Hours</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-deep-navy dark:text-dark-text">Weekly Average</p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Goal: 8h/night</p>
               </div>
-              <Badge variant="outline">Avg: 7.4h</Badge>
+              <div className="text-right">
+                <p className="text-lg font-medium text-deep-navy dark:text-dark-text">7.4h</p>
+                <p className="text-xs text-orange-500">93% of goal</p>
+              </div>
             </div>
-            <div className="h-32 flex items-end justify-between space-x-1">
-              {chartData.map((data, index) => (
-                <div key={index} className="flex flex-col items-center space-y-1 flex-1">
-                  <div
-                    className="w-full bg-primary-gradient rounded-t"
-                    style={{ height: `${(data.sleep / 10) * 100}%`, minHeight: "4px" }}
-                  />
-                  <span className="text-xs text-medium-gray dark:text-dark-muted">{data.day}</span>
-                </div>
-              ))}
+            
+            <div className="flex items-end justify-between space-x-1">
+              {chartData.map((data, index) => {
+                const maxSleep = Math.max(...chartData.map(d => d.sleep))
+                const height = maxSleep > 0 ? (data.sleep / maxSleep) * 100 : 0
+                return (
+                  <div key={index} className="flex-1 text-center">
+                    <div className="relative">
+                      <div className="w-full bg-indigo-100 dark:bg-indigo-900/20 rounded-t-sm h-16">
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-indigo-400 to-purple-400 rounded-t-sm transition-all duration-300"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted mt-1">{data.day}</p>
+                    <p className="text-xs text-deep-navy dark:text-dark-text font-medium">{data.sleep}h</p>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="mood" className="space-y-4">
           <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Smile className="h-5 w-5 text-bright-blue" />
-                <h3 className="font-medium text-deep-navy dark:text-dark-text">Mood Rating</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-deep-navy dark:text-dark-text">Weekly Average</p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Goal: 4.5/5</p>
               </div>
-              <Badge variant="outline">Avg: 4.3/5</Badge>
+              <div className="text-right">
+                <p className="text-lg font-medium text-deep-navy dark:text-dark-text">4.3/5</p>
+                <p className="text-xs text-orange-500">96% of goal</p>
+              </div>
             </div>
-            <div className="h-32 flex items-end justify-between space-x-1">
-              {chartData.map((data, index) => (
-                <div key={index} className="flex flex-col items-center space-y-1 flex-1">
-                  <div
-                    className="w-full bg-primary-gradient rounded-t"
-                    style={{ height: `${(data.mood / 5) * 100}%`, minHeight: "4px" }}
-                  />
-                  <span className="text-xs text-medium-gray dark:text-dark-muted">{data.day}</span>
-                </div>
-              ))}
+            
+            <div className="flex items-end justify-between space-x-1">
+              {chartData.map((data, index) => {
+                const maxMood = Math.max(...chartData.map(d => d.mood))
+                const height = maxMood > 0 ? (data.mood / maxMood) * 100 : 0
+                return (
+                  <div key={index} className="flex-1 text-center">
+                    <div className="relative">
+                      <div className="w-full bg-green-100 dark:bg-green-900/20 rounded-t-sm h-16">
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-green-400 to-green-500 rounded-t-sm transition-all duration-300"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted mt-1">{data.day}</p>
+                    <p className="text-xs text-deep-navy dark:text-dark-text font-medium">{data.mood}/5</p>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         </TabsContent>
@@ -314,7 +366,7 @@ export default function AnalyticsPage({ onNavigateToPage, onNavigateToTab }: Ana
                 {user.rank <= 3 && (
                   <Award
                     className={`h-4 w-4 ${
-                      user.rank === 1 ? "text-yellow-500" : user.rank === 2 ? "text-gray-400" : "text-orange-500"
+                      user.isUser ? "text-white" : user.rank === 1 ? "text-yellow-500" : user.rank === 2 ? "text-gray-400" : "text-orange-500"
                     }`}
                   />
                 )}
