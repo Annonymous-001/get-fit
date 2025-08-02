@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 import { cn } from "@/lib/utils"
 
@@ -42,9 +43,14 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const isMobile = useIsMobile()
+    
+    // Mobile-specific classes
+    const mobileClasses = isMobile ? "touch-manipulation active:scale-95 min-h-11" : ""
+    
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, className }), mobileClasses)}
         ref={ref}
         {...props}
       />

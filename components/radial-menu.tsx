@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dumbbell, Utensils, Droplets, Moon, Activity, Scale } from "lucide-react"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface RadialMenuProps {
   isVisible: boolean
@@ -13,6 +14,8 @@ interface RadialMenuProps {
 
 export default function RadialMenu({ isVisible, onClose, centerPosition, onNavigateToPage }: RadialMenuProps) {
   const [isAnimating, setIsAnimating] = useState(false)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const isMobile = useIsMobile()
 
   const quickActions = [
     {
@@ -20,7 +23,7 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
       label: "Workout",
       color: "bg-gradient-to-r from-red-400 to-red-600",
       hoverColor: "hover:from-red-500 hover:to-red-700",
-                  action: () => onNavigateToPage?.("strength-training"),
+      action: () => onNavigateToPage?.("strength-training"),
     },
     {
       icon: Utensils,
@@ -69,8 +72,8 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
   }, [isVisible])
 
   const getIconPosition = (index: number, total: number) => {
-    // Semi-circular arc above the center point
-    const radius = 90 // Increased radius for better spacing
+    // Responsive radius based on device
+    const radius = isMobile ? 70 : 90
     const startAngle = Math.PI + Math.PI / 6 // Start from 210 degrees
     const endAngle = -Math.PI / 6 // End at -30 degrees
     const angleStep = (startAngle - endAngle) / (total - 1)
@@ -80,6 +83,24 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
     const y = Math.sin(angle) * radius
 
     return { x, y }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return
+
+    const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+    const distance = Math.sqrt(
+      Math.pow(touchEnd.x - touchStart.x, 2) + Math.pow(touchEnd.y - touchStart.y, 2)
+    )
+
+    // If touch moved more than 10px, treat as a swipe and close menu
+    if (distance > 10) {
+      onClose()
+    }
   }
 
   if (!isAnimating && !isVisible) return null
@@ -92,6 +113,8 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
           isVisible ? "bg-black/30 backdrop-blur-sm" : "bg-transparent"
         }`}
         onClick={onClose}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       />
 
       {/* Radial Menu */}
@@ -106,7 +129,7 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
         {quickActions.map((action, index) => {
           const Icon = action.icon
           const position = getIconPosition(index, quickActions.length)
-          const delay = index * 60 // Slightly increased stagger
+          const delay = index * 60
 
           return (
             <div
@@ -126,21 +149,25 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
                   action.action()
                   onClose()
                 }}
-                className={`w-14 h-14 rounded-full ${action.color} ${action.hoverColor} shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 border-3 border-white/30`}
+                className={`${
+                  isMobile ? 'w-12 h-12' : 'w-14 h-14'
+                } rounded-full ${action.color} ${action.hoverColor} shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 border-3 border-white/30 touch-manipulation`}
                 size="icon"
               >
-                <Icon className="h-6 w-6 text-white" />
+                <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-white`} />
               </Button>
               
-              {/* Label */}
-              {/* <div
-                className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 bg-black/80 text-white text-xs rounded-md whitespace-nowrap transition-all duration-200 ${
-                  isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
-                }`}
-                style={{ transitionDelay: isVisible ? `${delay + 100}ms` : "0ms" }}
-              >
-                {action.label}
-              </div> */}
+              {/* Mobile-friendly label */}
+              {isMobile && (
+                <div
+                  className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-black/80 text-white text-xs rounded-md whitespace-nowrap transition-all duration-200 ${
+                    isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                  }`}
+                  style={{ transitionDelay: isVisible ? `${delay + 100}ms` : "0ms" }}
+                >
+                  {action.label}
+                </div>
+              )}
             </div>
           )
         })}
@@ -152,7 +179,7 @@ export default function RadialMenu({ isVisible, onClose, centerPosition, onNavig
           }`}
           style={{ transitionDelay: isVisible ? "100ms" : "0ms" }}
         >
-          <div className="w-3 h-3 bg-white rounded-full shadow-lg border-2 border-bright-blue/50" />
+          <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} bg-white rounded-full shadow-lg border-2 border-bright-blue/50`} />
         </div>
       </div>
     </>
