@@ -15,6 +15,7 @@ import YouPage from "@/components/you-page"
 import CommunityPage from "@/components/community-page"
 import FoodTrackingPage from "@/components/food-tracking-page"
 import WorkoutTrackingPage from "@/components/workout-tracking-page"
+
 import WaterTrackingPage from "@/components/water-tracking-page"
 import WeightTrackingPage from "@/components/weight-tracking-page"
 import SleepTrackingPage from "@/components/sleep-tracking-page"
@@ -36,6 +37,7 @@ const additionalPages = {
   goals: GoalsPage,
   food: FoodTrackingPage,
   workout: WorkoutTrackingPage,
+  
   water: WaterTrackingPage,
   weight: WeightTrackingPage,
   sleep: SleepTrackingPage,
@@ -249,7 +251,12 @@ function GetFitAppContent() {
       {showChatbot && <Chatbot onClose={() => setShowChatbot(false)} />}
 
       {/* Radial Menu */}
-      <RadialMenu isVisible={showRadialMenu} onClose={closeRadialMenu} centerPosition={radialMenuPosition} />
+      <RadialMenu 
+        isVisible={showRadialMenu} 
+        onClose={closeRadialMenu} 
+        centerPosition={radialMenuPosition}
+        onNavigateToPage={(page: string) => setCurrentPage(page)}
+      />
     </div>
   )
 }

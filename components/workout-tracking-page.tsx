@@ -398,7 +398,10 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
             <h3 className="font-medium text-deep-navy dark:text-dark-text mb-1">Quick Start</h3>
             <p className="text-sm text-medium-gray dark:text-dark-muted">Start a workout in seconds</p>
           </div>
-          <Button className="bg-primary-gradient hover:opacity-90 text-white">
+          <Button 
+            className="bg-primary-gradient hover:opacity-90 text-white"
+            onClick={() => onNavigateToPage?.("strength-training")}
+          >
             <Play className="h-4 w-4 mr-2" />
             Start
           </Button>

@@ -48,7 +48,7 @@ export default function Chatbot({ onClose }: ChatbotProps) {
   // Check if speech recognition is supported
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       if (SpeechRecognition) {
         setIsVoiceSupported(true)
         recognitionRef.current = new SpeechRecognition()

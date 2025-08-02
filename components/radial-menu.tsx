@@ -8,9 +8,10 @@ interface RadialMenuProps {
   isVisible: boolean
   onClose: () => void
   centerPosition: { x: number; y: number }
+  onNavigateToPage?: (page: string) => void
 }
 
-export default function RadialMenu({ isVisible, onClose, centerPosition }: RadialMenuProps) {
+export default function RadialMenu({ isVisible, onClose, centerPosition, onNavigateToPage }: RadialMenuProps) {
   const [isAnimating, setIsAnimating] = useState(false)
 
   const quickActions = [
@@ -19,35 +20,35 @@ export default function RadialMenu({ isVisible, onClose, centerPosition }: Radia
       label: "Workout",
       color: "bg-gradient-to-r from-red-400 to-red-600",
       hoverColor: "hover:from-red-500 hover:to-red-700",
-      action: () => console.log("Start workout tracking"),
+                  action: () => onNavigateToPage?.("strength-training"),
     },
     {
       icon: Utensils,
       label: "Food",
       color: "bg-gradient-to-r from-green-400 to-green-600",
       hoverColor: "hover:from-green-500 hover:to-green-700",
-      action: () => console.log("Log food"),
+      action: () => onNavigateToPage?.("food"),
     },
     {
       icon: Scale,
       label: "Weight",
       color: "bg-gradient-to-r from-blue-400 to-blue-600",
       hoverColor: "hover:from-blue-500 hover:to-blue-700",
-      action: () => console.log("Log weight"),
+      action: () => onNavigateToPage?.("weight"),
     },
     {
       icon: Droplets,
       label: "Water",
       color: "bg-gradient-to-r from-cyan-400 to-cyan-600",
       hoverColor: "hover:from-cyan-500 hover:to-cyan-700",
-      action: () => console.log("Log water"),
+      action: () => onNavigateToPage?.("water"),
     },
     {
       icon: Moon,
       label: "Sleep",
       color: "bg-gradient-to-r from-purple-400 to-purple-600",
       hoverColor: "hover:from-purple-500 hover:to-purple-700",
-      action: () => console.log("Log sleep"),
+      action: () => onNavigateToPage?.("sleep"),
     },
     {
       icon: Activity,
