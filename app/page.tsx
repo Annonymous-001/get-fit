@@ -19,6 +19,7 @@ import WeightTrackingPage from "@/components/weight-tracking-page"
 import SleepTrackingPage from "@/components/sleep-tracking-page"
 import StrengthTrainingPage from "@/components/strength-training-page"
 import OutdoorActivityPage from "@/components/outdoor-activity-page"
+import SettingsPage from "@/components/settings-page"
 import Chatbot from "@/components/chatbot"
 import RadialMenu from "@/components/radial-menu"
 import AuthWrapper from "@/components/auth/auth-wrapper"
@@ -36,12 +37,12 @@ const additionalPages = {
   goals: GoalsPage,
   food: FoodTrackingPage,
   workout: WorkoutTrackingPage,
-  
   water: WaterTrackingPage,
   weight: WeightTrackingPage,
   sleep: SleepTrackingPage,
   "strength-training": StrengthTrainingPage,
   "outdoor-activity": OutdoorActivityPage,
+  settings: SettingsPage,
 }
 
 function GetFitAppContent() {
@@ -108,6 +109,11 @@ function GetFitAppContent() {
     }
   }, [])
 
+  // Handle logout by refreshing the page to reset authentication state
+  const handleLogout = () => {
+    window.location.reload()
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg flex flex-col max-w-md mx-auto relative transition-colors duration-300">
       {/* Header */}
@@ -159,7 +165,8 @@ function GetFitAppContent() {
           onNavigateToTab: (tab: string) => {
             setActiveTab(tab)
             setCurrentPage(null)
-          }
+          },
+          onLogout: handleLogout
         })}
       </main>
 

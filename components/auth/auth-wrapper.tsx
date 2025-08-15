@@ -30,20 +30,7 @@ export default function AuthWrapper({ children }: AuthWrapperProps) {
 
   // If user is authenticated, show the main app
   if (isAuthenticated) {
-    return (
-      <div>
-        {/* Add logout button to the main app */}
-        <div className="fixed top-4 right-4 z-50">
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-        {children}
-      </div>
-    )
+    return <>{children}</>
   }
 
   // If user is not authenticated, show auth pages

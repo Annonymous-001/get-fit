@@ -195,7 +195,12 @@ export default function YouPage({ onNavigateToPage, onNavigateToTab }: YouPagePr
                 <Button variant="ghost" size="icon" className="text-medium-gray">
                   <Share className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-medium-gray">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-medium-gray"
+                  onClick={() => onNavigateToPage?.("settings")}
+                >
                   <Settings className="h-4 w-4" />
                 </Button>
               </div>
@@ -375,36 +380,32 @@ export default function YouPage({ onNavigateToPage, onNavigateToTab }: YouPagePr
         <div className="space-y-3">
           <h3 className="font-medium text-deep-navy dark:text-dark-text">Settings</h3>
           <div className="space-y-2">
-                      {[
-            { label: "Notifications", icon: "🔔" },
-            { label: "Privacy", icon: "🔒" },
-            { label: "Data Export", icon: "📊" },
-            { label: "Help & Support", icon: "❓" },
-          ].map((setting, index) => (
-            <div key={index} className="flex items-center justify-between py-2">
+            <button
+              onClick={() => onNavigateToPage?.("settings")}
+              className="w-full flex items-center justify-between py-2 hover:bg-gray-50 dark:hover:bg-dark-hover rounded-lg px-2 transition-colors"
+            >
               <div className="flex items-center space-x-3">
-                <span className="text-lg">{setting.icon}</span>
-                <span className="text-sm text-deep-navy dark:text-dark-text">{setting.label}</span>
+                <span className="text-lg">⚙️</span>
+                <span className="text-sm text-deep-navy dark:text-dark-text">Settings</span>
               </div>
               <ChevronRight className="h-4 w-4 text-medium-gray" />
+            </button>
+            
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between py-2 px-2">
+              <div className="flex items-center space-x-3">
+                <span className="text-lg">🌙</span>
+                <span className="text-sm text-deep-navy dark:text-dark-text">Theme</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="h-6 w-6 text-medium-gray hover:text-deep-navy dark:hover:text-dark-text"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
             </div>
-          ))}
-          
-          {/* Theme Toggle */}
-          <div className="flex items-center justify-between py-2">
-            <div className="flex items-center space-x-3">
-              <span className="text-lg">🌙</span>
-              <span className="text-sm text-deep-navy dark:text-dark-text">Theme</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="h-6 w-6 text-medium-gray hover:text-deep-navy dark:hover:text-dark-text"
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-          </div>
           </div>
         </div>
       </Card>
