@@ -1,7 +1,5 @@
 "use client"
-
 import React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Home, Target, Plus, TrendingUp, User, MessageCircle, UserCircle, Moon, Sun, Bell, Users, BotMessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,6 +21,7 @@ import StrengthTrainingPage from "@/components/strength-training-page"
 import OutdoorActivityPage from "@/components/outdoor-activity-page"
 import Chatbot from "@/components/chatbot"
 import RadialMenu from "@/components/radial-menu"
+import AuthWrapper from "@/components/auth/auth-wrapper"
 
 const tabs = [
   { id: "home", label: "Home", icon: Home, component: HomePage },
@@ -262,5 +261,9 @@ function GetFitAppContent() {
 }
 
 export default function GetFitApp() {
-  return <GetFitAppContent />
+  return (
+    <AuthWrapper>
+      <GetFitAppContent />
+    </AuthWrapper>
+  )
 }

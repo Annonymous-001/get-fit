@@ -2,6 +2,10 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Capacitor } from "@capacitor/core";
+import { Camera as CapacitorCamera, CameraResultType, CameraPermissionType, CameraSource } from "@capacitor/camera";
+import { useRef, useState } from "react";
+
 import {
   Footprints,
   Flame,
@@ -32,6 +36,11 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePageProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const [cameraPermission, setCameraPermission] = useState<string>('prompt');
   const goalWidgets = [
     {
       icon: Flame,
@@ -373,6 +382,174 @@ export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePage
     }
   }
 
+  // Check camera permissions
+  const checkCameraPermission = async (): Promise<boolean> => {
+    try {
+      const permission = await CapacitorCamera.checkPermissions();
+      console.log("Camera permission status:", permission);
+      
+      if (permission.camera === 'granted') {
+        setCameraPermission('granted');
+        return true;
+      } else if (permission.camera === 'denied') {
+        setCameraPermission('denied');
+        return false;
+      } else {
+        // Request permission
+        const requestResult = await CapacitorCamera.requestPermissions();
+        console.log("Camera permission request result:", requestResult);
+        
+        if (requestResult.camera === 'granted') {
+          setCameraPermission('granted');
+          return true;
+        } else {
+          setCameraPermission('denied');
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking camera permissions:", error);
+      return false;
+    }
+  };
+
+  // Open device settings
+  const openDeviceSettings = async () => {
+    if (Capacitor.isNativePlatform()) {
+      alert("Please manually open your device settings and enable camera permissions for this app.");
+    } else {
+      alert("Please enable camera permissions in your browser settings.");
+    }
+  };
+  const startWebCamera = async () => {
+    console.log("startWebCamera called");
+    setIsCameraLoading(true);
+    setIsCameraOpen(true); // Set this immediately to show the interface
+    
+    // Wait for the DOM to update and video ref to be available
+    setTimeout(async () => {
+      try {
+        // First try to get the front camera (user)
+        let stream;
+        try {
+          console.log("Trying to get front camera...");
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              facingMode: "user", // Front camera by default
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+          });
+          console.log("Front camera stream obtained");
+        } catch (frontCameraError) {
+          // If front camera fails, try any available camera
+          console.log("Front camera not available, trying any camera");
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+          });
+          console.log("Any camera stream obtained");
+        }
+        
+        if (videoRef.current) {
+          console.log("Setting video srcObject");
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            console.log("Video metadata loaded, playing video");
+            videoRef.current?.play();
+            setIsCameraLoading(false);
+          };
+          videoRef.current.onerror = (error) => {
+            console.error("Video error:", error);
+            setIsCameraLoading(false);
+          };
+        } else {
+          console.error("Video ref is still null after timeout");
+          setIsCameraLoading(false);
+        }
+      } catch (error) {
+        console.error("Camera access error:", error);
+        setIsCameraLoading(false);
+        alert("Unable to access camera. Please check permissions.");
+      }
+    }, 200); // Wait 200ms for DOM to update
+  };
+
+  // Take snapshot
+  const takeWebPhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const context = canvasRef.current.getContext("2d");
+    if (context) {
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      
+      // Flip the image horizontally to correct the mirror effect
+      context.scale(-1, 1);
+      context.translate(-canvasRef.current.width, 0);
+      context.drawImage(videoRef.current, 0, 0);
+      
+      const imageData = canvasRef.current.toDataURL("image/png");
+      console.log("Captured photo (web):", imageData);
+      
+      // Show a brief success message
+      alert("Photo captured successfully!");
+      
+      stopWebCamera();
+      setIsCameraOpen(false);
+    }
+  };
+
+  // Stop camera after capture
+  const stopWebCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  // Main capture function
+  const handleSnapPhoto = async () => {
+    console.log("handleSnapPhoto called");
+    const isNative = Capacitor.isNativePlatform();
+    console.log("Is native platform:", isNative);
+    
+    if (isNative) {
+      try {
+        // Check permissions first
+        const hasPermission = await checkCameraPermission();
+        if (!hasPermission) {
+          alert("Camera permission is required to take photos. Please grant camera permission in your device settings.");
+          return;
+        }
+
+        const image = await CapacitorCamera.getPhoto({
+          quality: 90,
+          resultType: CameraResultType.DataUrl,
+          allowEditing: false,
+          source: CameraSource.Camera, // Force camera source
+        });
+        console.log("Captured photo (native):", image.dataUrl);
+        
+        // Show success message
+        alert("Photo captured successfully!");
+      } catch (error) {
+        console.error("Camera error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('permission')) {
+          alert("Camera permission denied. Please enable camera access in your device settings.");
+        } else {
+          alert("Failed to capture photo. Please try again.");
+        }
+      }
+    } else {
+      console.log("Starting web camera...");
+      startWebCamera();
+    }
+  };
+
+  
   const quickActions = [
     {
       icon: Camera,
@@ -380,8 +557,21 @@ export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePage
       color: "text-purple-600",
       bgColor: "bg-purple-100",
       onClick: () => {
-        // Handle snap photo action
-        console.log("Snap Photo clicked")
+        console.log("Camera button clicked");
+        const isNative = Capacitor.isNativePlatform();
+        
+        if (isNative) {
+          // For native platforms, directly call handleSnapPhoto without showing UI
+          handleSnapPhoto();
+        } else {
+          // For web platforms, show the camera interface
+          setIsCameraOpen(true);
+          setIsCameraLoading(false);
+          // Then try to start camera
+          setTimeout(() => {
+            handleSnapPhoto();
+          }, 100);
+        }
       }
     },
     {
@@ -768,6 +958,86 @@ export default function HomePage({ onNavigateToPage, onNavigateToTab }: HomePage
           Load More Posts
         </Button>
       </div>
+      {isCameraOpen && !Capacitor.isNativePlatform() && (
+        <div className="fixed inset-0 bg-black z-[9999] flex flex-col">
+          {/* Simple Header */}
+          <div className="bg-black text-white p-4 flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Camera</h2>
+            <div className="flex items-center space-x-4">
+              {cameraPermission === 'denied' && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-red-400 text-sm">Permission Denied</span>
+                  <button 
+                    onClick={openDeviceSettings}
+                    className="text-blue-400 text-sm underline"
+                  >
+                    Settings
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={() => {
+                  stopWebCamera();
+                  setIsCameraOpen(false);
+                }}
+                className="text-white text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Video Area */}
+          <div className="flex-1 flex items-center justify-center bg-gray-900 p-4">
+            {isCameraLoading ? (
+              <div className="text-white text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+                <p className="text-lg">Starting camera...</p>
+              </div>
+            ) : (
+              <div className="w-full max-w-lg">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="w-full h-auto rounded-lg"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                <canvas ref={canvasRef} style={{ display: "none" }} />
+              </div>
+            )}
+          </div>
+
+          {/* Simple Controls */}
+          <div className="bg-black p-6">
+            <div className="flex justify-center space-x-8">
+              <button
+                onClick={() => {
+                  stopWebCamera();
+                  setIsCameraOpen(false);
+                }}
+                className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-white font-bold"
+              >
+                ✕
+              </button>
+              
+              <button
+                onClick={takeWebPhoto}
+                className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-gray-300"
+              >
+                <div className="w-16 h-16 bg-white rounded-full border-2 border-gray-400"></div>
+              </button>
+              
+              <button
+                onClick={() => console.log("Switch camera")}
+                className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold"
+              >
+                🔄
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
