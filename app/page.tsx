@@ -20,7 +20,7 @@ import SleepTrackingPage from "@/components/sleep-tracking-page"
 import StrengthTrainingPage from "@/components/strength-training-page"
 import OutdoorActivityPage from "@/components/outdoor-activity-page"
 import SettingsPage from "@/components/settings-page"
-import Chatbot from "@/components/chatbot"
+import ChatPage from "@/components/chat-page"
 import RadialMenu from "@/components/radial-menu"
 import AuthWrapper from "@/components/auth/auth-wrapper"
 
@@ -43,6 +43,7 @@ const additionalPages = {
   "strength-training": StrengthTrainingPage,
   "outdoor-activity": OutdoorActivityPage,
   settings: SettingsPage,
+  chat: ChatPage,
 }
 
 function GetFitAppContent() {
@@ -53,7 +54,6 @@ function GetFitAppContent() {
   const { theme, setTheme } = useTheme()
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   const [isLongPress, setIsLongPress] = useState(false)
-  const [showChatbot, setShowChatbot] = useState(false)
   const addActivityButtonRef = useRef<HTMLButtonElement>(null)
 
   const ActiveComponent = currentPage 
@@ -145,6 +145,7 @@ function GetFitAppContent() {
             variant="ghost"
             size="icon"
             className="text-medium-gray dark:text-dark-muted hover:text-deep-navy dark:hover:text-dark-text"
+            onClick={() => setCurrentPage("chat")}
           >
             <MessageCircle className="h-5 w-5" />
           </Button>
@@ -244,17 +245,14 @@ function GetFitAppContent() {
         </div>
       </nav>
 
-      {/* Floating AI Chatbot Button */}
+      {/* Floating AI Chat Button navigates to full page */}
       <Button
-        onClick={() => setShowChatbot(true)}
+        onClick={() => setCurrentPage("chat")}
         className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-primary-gradient hover:opacity-90 shadow-lg transition-all duration-300"
         size="icon"
       >
         <BotMessageSquare className="h-6 w-6 text-white" />
       </Button>
-
-      {/* Chatbot */}
-      {showChatbot && <Chatbot onClose={() => setShowChatbot(false)} />}
 
       {/* Radial Menu */}
       <RadialMenu 
