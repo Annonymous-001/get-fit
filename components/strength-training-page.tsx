@@ -64,6 +64,7 @@ interface Set {
   isDropSet: boolean
   restTime: number
   notes?: string
+  type?: 'normal' | 'warmup' | 'right' | 'left' | 'failure' | 'dropset' | 'negative'
 }
 
 interface WorkoutExercise {
@@ -112,6 +113,8 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
   const [restTimer, setRestTimer] = useState(0)
   const [isRestTimerRunning, setIsRestTimerRunning] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [setTypeDialogOpen, setSetTypeDialogOpen] = useState(false)
+  const [setTypeDialogTarget, setSetTypeDialogTarget] = useState<{ exerciseId: string; setId: string } | null>(null)
   
   // Create program states
   const [newProgramName, setNewProgramName] = useState("")
@@ -332,6 +335,46 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
     setIsTimerRunning(true)
   }
 
+  const openSetTypeDialog = (exerciseId: string, setId: string) => {
+    setSetTypeDialogTarget({ exerciseId, setId })
+    setSetTypeDialogOpen(true)
+  }
+
+  const applySetType = (type: Set['type']) => {
+    if (!currentWorkout || !setTypeDialogTarget) return
+    const { exerciseId, setId } = setTypeDialogTarget
+    const updates: Partial<Set> = {
+      type,
+      isWarmup: type === 'warmup',
+      isFailure: type === 'failure',
+      isDropSet: type === 'dropset'
+    }
+    updateSet(exerciseId, setId, updates)
+    setSetTypeDialogOpen(false)
+  }
+
+  const getSetShortLabel = (set: Set, index: number) => {
+    switch (set.type) {
+      case 'warmup':
+        return 'W'
+      case 'right':
+        return 'R'
+      case 'left':
+        return 'L'
+      case 'failure':
+        return 'F'
+      case 'dropset':
+        return 'D'
+      case 'negative':
+        return 'N'
+      default:
+        if (set.isWarmup) return 'W'
+        if (set.isFailure) return 'F'
+        if (set.isDropSet) return 'D'
+        return String(index + 1)
+    }
+  }
+
   const addExerciseToWorkout = (exercise: Exercise) => {
     if (!currentWorkout) return
 
@@ -347,7 +390,8 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
           isWarmup: false,
           isFailure: false,
           isDropSet: false,
-          restTime: 60
+          restTime: 60,
+          type: 'normal'
         }
       ],
       restBetweenSets: 60
@@ -365,16 +409,17 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
 
     const updatedExercises = currentWorkout.exercises.map(ex => {
       if (ex.id === exerciseId) {
-        const lastSet = ex.sets[ex.sets.length - 1]
+        const lastSet = ex.sets.length > 0 ? ex.sets[ex.sets.length - 1] : undefined
         const newSet: Set = {
           id: Date.now().toString(),
-          reps: lastSet.reps,
-          weight: lastSet.weight,
+          reps: lastSet ? lastSet.reps : 10,
+          weight: lastSet ? lastSet.weight : 0,
           isCompleted: false,
           isWarmup: false,
           isFailure: false,
           isDropSet: false,
-          restTime: ex.restBetweenSets
+          restTime: ex.restBetweenSets,
+          type: 'normal'
         }
         return { ...ex, sets: [...ex.sets, newSet] }
       }
@@ -446,7 +491,8 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
         sets: ex.sets.map(set => ({
           ...set,
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          isCompleted: false
+          isCompleted: false,
+          type: set.type || 'normal'
         }))
       })),
       startTime: new Date(),
@@ -501,7 +547,8 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
           isWarmup: false,
           isFailure: false,
           isDropSet: false,
-          restTime: 60
+          restTime: 60,
+          type: 'normal'
         }
       ],
       restBetweenSets: 60
@@ -783,9 +830,14 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                   <div className="space-y-2">
                     {exercise.sets.map((set, index) => (
                       <div key={set.id} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                        <span className="text-sm font-medium text-deep-navy dark:text-dark-text w-8">
-                          {index + 1}
-                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-6 p-0 text-sm font-medium text-deep-navy dark:text-dark-text"
+                          onClick={() => openSetTypeDialog(exercise.id, set.id)}
+                        >
+                          {getSetShortLabel(set, index)}
+                        </Button>
                         
                         <Input
                           type="number"
@@ -805,32 +857,7 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                         
                         <span className="text-xs text-medium-gray dark:text-dark-muted">lbs</span>
                         
-                        <div className="flex space-x-1">
-                          <Button
-                            variant={set.isWarmup ? "default" : "outline"}
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateSet(exercise.id, set.id, { isWarmup: !set.isWarmup })}
-                          >
-                            W
-                          </Button>
-                          <Button
-                            variant={set.isFailure ? "destructive" : "outline"}
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateSet(exercise.id, set.id, { isFailure: !set.isFailure })}
-                          >
-                            F
-                          </Button>
-                          <Button
-                            variant={set.isDropSet ? "default" : "outline"}
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateSet(exercise.id, set.id, { isDropSet: !set.isDropSet })}
-                          >
-                            D
-                          </Button>
-                        </div>
+                        <div className="flex space-x-1" />
                         
                         <Button
                           variant={set.isCompleted ? "default" : "outline"}
@@ -1199,7 +1226,7 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                       {exercise.sets.map((set, index) => (
                         <div key={set.id} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
                           <span className="text-sm font-medium text-deep-navy dark:text-dark-text w-8">
-                            {index + 1}
+                            {getSetShortLabel(set, index)}
                           </span>
                           
                           <span className="text-sm text-deep-navy dark:text-dark-text w-12">
@@ -1211,9 +1238,12 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                           </span>
                           
                           <div className="flex space-x-1">
-                            {set.isWarmup && <Badge variant="secondary" className="text-xs">W</Badge>}
-                            {set.isFailure && <Badge variant="destructive" className="text-xs">F</Badge>}
-                            {set.isDropSet && <Badge variant="outline" className="text-xs">D</Badge>}
+                            {set.type === 'warmup' && <Badge variant="secondary" className="text-xs">W</Badge>}
+                            {set.type === 'failure' && <Badge variant="destructive" className="text-xs">F</Badge>}
+                            {set.type === 'dropset' && <Badge variant="outline" className="text-xs">D</Badge>}
+                            {set.type === 'right' && <Badge variant="outline" className="text-xs">R</Badge>}
+                            {set.type === 'left' && <Badge variant="outline" className="text-xs">L</Badge>}
+                            {set.type === 'negative' && <Badge variant="outline" className="text-xs">N</Badge>}
                           </div>
                           
                           <div className="ml-auto">
@@ -1231,6 +1261,47 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Set Type Selection Dialog */}
+      <Dialog open={setTypeDialogOpen} onOpenChange={setSetTypeDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Set Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('warmup')}>
+                <span className="mr-2 text-yellow-600">W</span> Warm Up
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('right')}>
+                <span className="mr-2 text-purple-600">R</span> Right
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('left')}>
+                <span className="mr-2 text-green-600">L</span> Left
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('failure')}>
+                <span className="mr-2 text-red-600">F</span> Failure
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('dropset')}>
+                <span className="mr-2 text-blue-600">D</span> Drop Set
+              </Button>
+              <Button variant="outline" className="justify-start" onClick={() => applySetType('negative')}>
+                <span className="mr-2 text-orange-600">N</span> Negative Reps
+              </Button>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <Button variant="ghost" className="text-red-600" onClick={() => {
+                if (!setTypeDialogTarget) return
+                removeSetFromExercise(setTypeDialogTarget.exerciseId, setTypeDialogTarget.setId)
+                setSetTypeDialogOpen(false)
+              }}>
+                Delete Set
+              </Button>
+              <Button variant="outline" onClick={() => setSetTypeDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
