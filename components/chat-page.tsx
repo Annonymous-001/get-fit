@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, Send, Bot, User, Mic, MicOff } from "lucide-react"
+import { ChevronLeft, Send, Bot, User, Mic, MicOff, Camera, Lightbulb, BarChart3, Target } from "lucide-react"
 
 interface Message {
   id: string
@@ -35,6 +35,11 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<any>(null)
+  const [quickActions] = useState([
+    { text: "Log breakfast", icon: Lightbulb },
+    { text: "Weekly progress", icon: BarChart3 },
+    { text: "Set goals", icon: Target }
+  ])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -113,6 +118,26 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
 
   const getBotResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase()
+    if (lowerMessage.includes("hi") || lowerMessage.includes("hello")) {
+      return "Hi! I'm your GetFit AI assistant. How can I help you with your fitness journey today? You can ask me about your progress, get workout suggestions, or tips for reaching your goals."
+    }
+    if (lowerMessage.includes("log breakfast") || lowerMessage.includes("log lunch") || lowerMessage.includes("log dinner") || lowerMessage.includes("log snack")  ) {
+      return "✅ Logged your meal!\n\n**Nutritional Info:**\n• Calories: 105\n• Carbs: 27g\n• Fiber: 3.1g\n• Potassium: 422mg\n• Vitamin B6: 20% DV\n\nGreat choice for sustained energy! 🍌💪"
+    }
+    if (lowerMessage.includes("weekly progress") || lowerMessage.includes("weekly summary") || lowerMessage.includes("weekly report")) {
+      return "📊 **7-Day Meal Summary**\n\n**Breakfast:** Average 320 calories\n**Lunch:** Average 450 calories\n**Dinner:** Average 380 calories\n**Snacks:** Average 150 calories\n\n**Total Weekly Average:** 1,300 calories/day\n\nYou're staying consistent with your nutrition goals! 🎯"
+    }
+    if (lowerMessage.includes("set goals") || lowerMessage.includes("set goal") || lowerMessage.includes("set target")) {
+      return "You have 3 active goals right now. Your step goal is 67.5% complete! Would you like me to suggest a new challenge based on your progress?"
+    }
+
+    if (lowerMessage.includes("banana") || lowerMessage.includes("evening snack")) {
+      return "✅ Logged banana for your evening snack!\n\n**Nutritional Info:**\n• Calories: 105\n• Carbs: 27g\n• Fiber: 3.1g\n• Potassium: 422mg\n• Vitamin B6: 20% DV\n\nGreat choice for sustained energy! 🍌💪"
+    }
+
+    if (lowerMessage.includes("summary") || lowerMessage.includes("meals") || lowerMessage.includes("7 days")) {
+      return "📊 **7-Day Meal Summary**\n\n**Breakfast:** Average 320 calories\n**Lunch:** Average 450 calories\n**Dinner:** Average 380 calories\n**Snacks:** Average 150 calories\n\n**Total Weekly Average:** 1,300 calories/day\n\nYou're staying consistent with your nutrition goals! 🎯"
+    }
 
     if (lowerMessage.includes("steps") || lowerMessage.includes("walking")) {
       return "Great question about steps! I can see you're at 5,400 steps today. To reach your 8,000 step goal, try taking a 20-minute walk - that's about 2,600 steps!"
@@ -146,7 +171,7 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
       return "I see you enjoy running! Your last run was 5.2km in 24:15. Would you like me to suggest a training plan to improve your pace?"
     }
 
-    return "I'm here to help with your fitness journey! You can ask me about your progress, get workout suggestions, or tips for reaching your goals. What would you like to know?"
+    return "Hi! I'm your GetFit AI assistant. How can I help you with your fitness journey today? You can ask me about your progress, get workout suggestions, or tips for reaching your goals."
   }
 
   const handleSendMessage = async () => {
@@ -160,6 +185,7 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
       isVoice: isListening,
     }
 
+    const messageText = inputValue
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
     setIsTyping(true)
@@ -168,7 +194,7 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
     setTimeout(() => {
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getBotResponse(inputValue),
+        text: getBotResponse(messageText),
         sender: "bot",
         timestamp: new Date(),
       }
@@ -184,157 +210,158 @@ export default function ChatPage({ onNavigateToTab }: ChatPageProps) {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="h-full flex flex-col bg-white dark:bg-dark-bg">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => onNavigateToTab?.("home")}
-        >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+        <Button variant="ghost" size="icon" onClick={() => onNavigateToTab?.("home")}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-light text-deep-navy dark:text-dark-text">AI Chat</h1>
-        <div className="w-10" />
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-bright-blue rounded-full flex items-center justify-center">
+            <Bot className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-dark-text">GetFit AI</h3>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-gray-500">Online</span>
+            </div>
+          </div>
+        </div>
+        <div className="w-8"></div>
       </div>
 
-      <Card className="flex flex-col bg-white dark:bg-dark-card border border-border-gray dark:border-dark-border shadow-sm h-[calc(100vh-220px)]">
-        {/* Header inside card */}
-        <div className="flex items-center justify-between p-4 border-b border-border-gray dark:border-dark-border bg-primary-gradient">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-medium text-white">GetFit AI</h3>
-              <p className="text-xs text-white/80">Your fitness assistant</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[80%] p-3 rounded-2xl ${
-                  message.sender === "user"
-                    ? "bg-primary-gradient text-white"
-                    : "bg-light-gray dark:bg-dark-bg border border-border-gray dark:border-dark-border text-deep-navy dark:text-dark-text"
-                }`}
-              >
-                <div className="flex items-start space-x-2">
-                  {message.sender === "bot" && <Bot className="h-4 w-4 mt-0.5 text-bright-blue flex-shrink-0" />}
-                  {message.sender === "user" && (
-                    <div className="flex items-center space-x-1">
-                      <User className="h-4 w-4 mt-0.5 text-white flex-shrink-0" />
-                      {message.isVoice && <Mic className="h-3 w-3 text-white/80" />}
-                    </div>
-                  )}
-                  <p className="text-sm leading-relaxed">{message.text}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-light-gray dark:bg-dark-bg border border-border-gray dark:border-dark-border p-3 rounded-2xl">
-                <div className="flex items-center space-x-2">
-                  <Bot className="h-4 w-4 text-bright-blue" />
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-medium-gray rounded-full animate-bounce" />
-                    <div
-                      className="w-2 h-2 bg-medium-gray rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-medium-gray rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          {isListening && (
-            <div className="flex justify-start">
-              <div className="bg-light-gray dark:bg-dark-bg border border-border-gray dark:border-dark-border p-3 rounded-2xl">
-                <div className="flex items-center space-x-2">
-                  <Mic className="h-4 w-4 text-red-500 animate-pulse" />
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" />
-                    <div
-                      className="w-2 h-2 bg-red-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-red-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    />
-                  </div>
-                  <span className="text-sm text-deep-navy dark:text-dark-text">Listening...</span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-border-gray dark:border-dark-border">
-          <div className="flex space-x-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about your fitness..."
-              className="flex-1 bg-light-gray dark:bg-dark-bg border-border-gray dark:border-dark-border"
-              disabled={isTyping || isListening}
-            />
-            {isVoiceSupported && (
-              <Button
-                onMouseDown={handleVoiceButtonMouseDown}
-                onMouseUp={handleVoiceButtonMouseUp}
-                onMouseLeave={() => {
-                  if (longPressTimer) {
-                    clearTimeout(longPressTimer)
-                    setLongPressTimer(null)
-                  }
-                }}
-                onTouchStart={handleVoiceButtonMouseDown}
-                onTouchEnd={handleVoiceButtonMouseUp}
-                disabled={isTyping}
-                className={`${
-                  isListening 
-                    ? "bg-red-500 hover:bg-red-600 text-white" 
-                    : "bg-primary-gradient hover:opacity-90 text-white"
-                } transition-all duration-200`}
-                size="icon"
-              >
-                {isListening ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isTyping || isListening}
-              className="bg-primary-gradient hover:opacity-90"
-              size="icon"
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`max-w-[80%] p-3 rounded-2xl ${
+                message.sender === "user"
+                  ? "bg-bright-blue text-white"
+                  : "bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-900 dark:text-dark-text"
+              }`}
             >
-              <Send className="h-4 w-4 text-white" />
-            </Button>
+              <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+              <p className="text-xs mt-2 opacity-70">
+                {message.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
           </div>
+        ))}
+
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border p-3 rounded-2xl">
+              <div className="flex items-center space-x-2">
+                <Bot className="h-4 w-4 text-teal-500" />
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isListening && (
+          <div className="flex justify-start">
+            <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border p-3 rounded-2xl">
+              <div className="flex items-center space-x-2">
+                <Mic className="h-4 w-4 text-red-500 animate-pulse" />
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" />
+                  <div
+                    className="w-2 h-2 bg-red-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-red-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">Listening...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-gray-200 dark:border-dark-border">
+        <div className="flex space-x-2">
+          <Button variant="ghost" size="icon" className="text-gray-500">
+            <Camera className="h-5 w-5" />
+          </Button>
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Message GetFit AI..."
+            className="flex-1 bg-gray-100 dark:bg-dark-bg border-gray-200 dark:border-dark-border rounded-full"
+            disabled={isTyping || isListening}
+          />
+          
+          {/* Voice Button */}
           {isVoiceSupported && (
-            <p className="text-xs text-medium-gray dark:text-dark-muted mt-2 text-center">
-              Hold the mic button to speak • Tap to type
-            </p>
+            <Button
+              onMouseDown={handleVoiceButtonMouseDown}
+              onMouseUp={handleVoiceButtonMouseUp}
+              onMouseLeave={() => {
+                if (longPressTimer) {
+                  clearTimeout(longPressTimer)
+                  setLongPressTimer(null)
+                }
+              }}
+              onTouchStart={handleVoiceButtonMouseDown}
+              onTouchEnd={handleVoiceButtonMouseUp}
+              disabled={isTyping}
+              variant="ghost"
+              size="icon"
+              className="text-gray-500"
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
           )}
+          
+          <Button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isTyping || isListening}
+            variant="ghost"
+            size="icon"
+            className="text-gray-500"
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
-      </Card>
+        
+        {/* Quick Action Buttons */}
+        <div className="flex space-x-2 mt-3">
+          {quickActions.map((action, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              className="flex-1 bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border rounded-full text-xs"
+              onClick={() => {
+                setInputValue(action.text)
+                handleSendMessage()
+              }}
+            >
+              <action.icon className="h-3 w-3 mr-1" />
+              {action.text}
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
