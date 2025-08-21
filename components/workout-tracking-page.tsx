@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,12 +24,43 @@ import {
   Dumbbell,
   Bike,
   Activity,
-  BarChart3
+  BarChart3,
+  Navigation,
+  Zap,
+  StopCircle,
+  RotateCcw,
+  Save,
+  X
 } from "lucide-react"
 
 interface WorkoutTrackingPageProps {
   onNavigateToPage?: (page: string) => void
   onNavigateToTab?: (tab: string) => void
+}
+
+interface WorkoutSession {
+  id: string
+  type: string
+  startTime: Date
+  endTime?: Date
+  duration: number // in seconds
+  distance?: number // in meters
+  calories: number
+  pace?: string
+  route?: Array<{lat: number, lng: number}>
+  isActive: boolean
+}
+
+interface OutdoorActivityState {
+  isTracking: boolean
+  currentSession: WorkoutSession | null
+  elapsedTime: number
+  distance: number
+  calories: number
+  pace: string
+  currentSpeed: number
+  route: Array<{lat: number, lng: number}>
+  gpsAccuracy: number
 }
 
 // Custom image components for activities
@@ -47,6 +79,24 @@ const ActivityIcon = ({ name, className }: { name: string, className?: string })
 }
 
 export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab }: WorkoutTrackingPageProps) {
+  // Outdoor activity tracking state
+  const [outdoorState, setOutdoorState] = useState<OutdoorActivityState>({
+    isTracking: false,
+    currentSession: null,
+    elapsedTime: 0,
+    distance: 0,
+    calories: 0,
+    pace: "0:00",
+    currentSpeed: 0,
+    route: [],
+    gpsAccuracy: 0
+  })
+
+  const [showOutdoorTracker, setShowOutdoorTracker] = useState(false)
+  const [selectedActivity, setSelectedActivity] = useState<string>("")
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([])
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const watchIdRef = useRef<number | null>(null)
   const workoutActivities = [
     {
       id: 1,
@@ -173,6 +223,249 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
     goalPercentage: 91.5
   }
 
+  // Outdoor activity tracking functions
+  const startOutdoorActivity = (activityType: string) => {
+    if (!navigator.geolocation) {
+      alert("GPS is not supported on this device")
+      return
+    }
+
+    const newSession: WorkoutSession = {
+      id: Date.now().toString(),
+      type: activityType,
+      startTime: new Date(),
+      duration: 0,
+      calories: 0,
+      isActive: true
+    }
+
+    setOutdoorState(prev => ({
+      ...prev,
+      isTracking: true,
+      currentSession: newSession,
+      elapsedTime: 0,
+      distance: 0,
+      calories: 0,
+      pace: "0:00",
+      currentSpeed: 0,
+      route: [],
+      gpsAccuracy: 0
+    }))
+
+    setSelectedActivity(activityType)
+    setShowOutdoorTracker(true)
+
+    // Start timer
+    intervalRef.current = setInterval(() => {
+      setOutdoorState(prev => {
+        const newElapsedTime = prev.elapsedTime + 1
+        const newCalories = Math.round((newElapsedTime / 60) * getCaloriesPerMinute(activityType))
+        const newPace = prev.distance > 0 ? formatPace(newElapsedTime, prev.distance) : "0:00"
+        
+        return {
+          ...prev,
+          elapsedTime: newElapsedTime,
+          calories: newCalories,
+          pace: newPace
+        }
+      })
+    }, 1000)
+
+    // Start GPS tracking
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords
+        const newPoint = { lat: latitude, lng: longitude }
+        
+        setOutdoorState(prev => {
+          const newRoute = [...prev.route, newPoint]
+          const newDistance = calculateTotalDistance(newRoute)
+          const newSpeed = calculateCurrentSpeed(newRoute, prev.elapsedTime)
+          
+          return {
+            ...prev,
+            route: newRoute,
+            distance: newDistance,
+            currentSpeed: newSpeed,
+            gpsAccuracy: accuracy
+          }
+        })
+      },
+      (error) => {
+        console.error("GPS Error:", error)
+        alert("Unable to get GPS location. Please check your location settings.")
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    )
+  }
+
+  const stopOutdoorActivity = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
+    }
+
+    setOutdoorState(prev => {
+      const completedSession: WorkoutSession = {
+        ...prev.currentSession!,
+        endTime: new Date(),
+        duration: prev.elapsedTime,
+        distance: prev.distance,
+        calories: prev.calories,
+        pace: prev.pace,
+        route: prev.route,
+        isActive: false
+      }
+
+      // Save to history
+      const newHistory = [completedSession, ...workoutHistory]
+      setWorkoutHistory(newHistory)
+      localStorage.setItem('workoutHistory', JSON.stringify(newHistory))
+
+      return {
+        ...prev,
+        isTracking: false,
+        currentSession: null
+      }
+    })
+
+    setShowOutdoorTracker(false)
+    setSelectedActivity("")
+    onNavigateToPage?.("workout-history")
+  }
+
+  const pauseOutdoorActivity = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    setOutdoorState(prev => ({ ...prev, isTracking: false }))
+  }
+
+  const resumeOutdoorActivity = () => {
+    intervalRef.current = setInterval(() => {
+      setOutdoorState(prev => {
+        const newElapsedTime = prev.elapsedTime + 1
+        const newCalories = Math.round((newElapsedTime / 60) * getCaloriesPerMinute(selectedActivity))
+        const newPace = prev.distance > 0 ? formatPace(newElapsedTime, prev.distance) : "0:00"
+        
+        return {
+          ...prev,
+          elapsedTime: newElapsedTime,
+          calories: newCalories,
+          pace: newPace
+        }
+      })
+    }, 1000)
+    setOutdoorState(prev => ({ ...prev, isTracking: true }))
+  }
+
+  // Helper functions
+  const getCaloriesPerMinute = (activity: string): number => {
+    const caloriesMap: { [key: string]: number } = {
+      "Running": 12,
+      "Walking": 6,
+      "Swimming": 10,
+      "Cycling": 8
+    }
+    return caloriesMap[activity] || 8
+  }
+
+  const formatPace = (seconds: number, distance: number): string => {
+    if (distance === 0) return "0:00"
+    const paceSeconds = (seconds / distance) * 1000 // seconds per km
+    const minutes = Math.floor(paceSeconds / 60)
+    const secs = Math.floor(paceSeconds % 60)
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const calculateTotalDistance = (route: Array<{lat: number, lng: number}>): number => {
+    if (route.length < 2) return 0
+    
+    let totalDistance = 0
+    for (let i = 1; i < route.length; i++) {
+      totalDistance += calculateDistance(route[i-1], route[i])
+    }
+    return totalDistance
+  }
+
+  const calculateDistance = (point1: {lat: number, lng: number}, point2: {lat: number, lng: number}): number => {
+    const R = 6371e3 // Earth's radius in meters
+    const φ1 = point1.lat * Math.PI / 180
+    const φ2 = point2.lat * Math.PI / 180
+    const Δφ = (point2.lat - point1.lat) * Math.PI / 180
+    const Δλ = (point2.lng - point1.lng) * Math.PI / 180
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+    return R * c
+  }
+
+  const calculateCurrentSpeed = (route: Array<{lat: number, lng: number}>, elapsedTime: number): number => {
+    if (route.length < 2 || elapsedTime === 0) return 0
+    
+    const recentDistance = calculateTotalDistance(route.slice(-5)) // Last 5 points
+    const recentTime = Math.min(30, elapsedTime) // Last 30 seconds or total time
+    return (recentDistance / recentTime) * 3.6 // Convert to km/h
+  }
+
+  const formatTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDistance = (meters: number): string => {
+    if (meters < 1000) {
+      return `${Math.round(meters)}m`
+    }
+    return `${(meters / 1000).toFixed(2)}km`
+  }
+
+  // Load workout history on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('workoutHistory')
+    if (savedHistory) {
+      const history = JSON.parse(savedHistory)
+      // Convert string dates back to Date objects
+      const parsedHistory = history.map((workout: any) => ({
+        ...workout,
+        startTime: new Date(workout.startTime),
+        endTime: workout.endTime ? new Date(workout.endTime) : undefined
+      }))
+      setWorkoutHistory(parsedHistory)
+    }
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+      }
+    }
+  }, [])
+
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
@@ -269,8 +562,8 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                 onClick={() => {
                   if (activity.name === "Strength Training") {
                     onNavigateToPage?.("strength-training")
-                  } else if (["Running", "Swimming", "Cycling"].includes(activity.name)) {
-                    onNavigateToPage?.("outdoor-activity")
+                  } else if (["Running", "Swimming", "Cycling", "Walking"].includes(activity.name)) {
+                    startOutdoorActivity(activity.name)
                   }
                 }}
               >
@@ -297,8 +590,8 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                 onClick={() => {
                   if (activity.name === "Strength Training") {
                     onNavigateToPage?.("strength-training")
-                  } else if (["Running", "Swimming", "Cycling"].includes(activity.name)) {
-                    onNavigateToPage?.("outdoor-activity")
+                  } else if (["Running", "Swimming", "Cycling", "Walking"].includes(activity.name)) {
+                    startOutdoorActivity(activity.name)
                   }
                 }}
               >
@@ -337,13 +630,19 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Recent Workouts</h2>
-          <Button variant="ghost" size="sm" className="text-bright-blue">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-bright-blue"
+            onClick={() => onNavigateToPage?.("workout-history")}
+          >
             View All
           </Button>
         </div>
         
         <div className="space-y-3">
-          {recentWorkouts.map((workout) => (
+          {workoutHistory.length > 0 ? (
+            workoutHistory.slice(0, 3).map((workout) => (
             <Card key={workout.id} className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
@@ -351,25 +650,31 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                     <Activity className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-deep-navy dark:text-dark-text text-sm">{workout.title}</h3>
-                    <p className="text-xs text-medium-gray dark:text-dark-muted">{workout.type}</p>
+                    <h3 className="font-medium text-deep-navy dark:text-dark-text text-sm">{workout.type}</h3>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted">
+                      {workout.startTime.toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-medium-gray dark:text-dark-muted">{workout.date}</p>
-                  <p className="text-xs text-medium-gray dark:text-dark-muted">{workout.time}</p>
-                </div>
+                                  <div className="text-right">
+                    <p className="text-xs text-medium-gray dark:text-dark-muted">
+                      {workout.startTime.toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-medium-gray dark:text-dark-muted">
+                      {workout.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
               </div>
               
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="flex items-center space-x-1">
                   <Clock className="h-3 w-3 text-medium-gray" />
-                  <span className="text-deep-navy dark:text-dark-text">{workout.duration}</span>
+                  <span className="text-deep-navy dark:text-dark-text">{formatTime(workout.duration)}</span>
                 </div>
                 {workout.distance && (
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-3 w-3 text-medium-gray" />
-                    <span className="text-deep-navy dark:text-dark-text">{workout.distance}</span>
+                    <span className="text-deep-navy dark:text-dark-text">{formatDistance(workout.distance)}</span>
                   </div>
                 )}
                 <div className="flex items-center space-x-1">
@@ -387,7 +692,14 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
                 </div>
               )}
             </Card>
-          ))}
+          ))
+          ) : (
+            <div className="text-center py-8 text-medium-gray dark:text-dark-muted">
+              <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No workouts yet</p>
+              <p className="text-xs">Start your first outdoor activity!</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -407,6 +719,135 @@ export default function WorkoutTrackingPage({ onNavigateToPage, onNavigateToTab 
           </Button>
         </div>
       </Card>
+
+      {/* Outdoor Activity Tracker */}
+      {showOutdoorTracker && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-dark-card rounded-2xl w-full max-w-md p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary-gradient rounded-full flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-deep-navy dark:text-dark-text">{selectedActivity}</h2>
+                  <p className="text-xs text-medium-gray dark:text-dark-muted">GPS Tracking Active</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowOutdoorTracker(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Main Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-light-gray dark:bg-dark-bg rounded-xl">
+                <Clock className="h-6 w-6 mx-auto mb-2 text-bright-blue" />
+                <p className="text-2xl font-bold text-deep-navy dark:text-dark-text">
+                  {formatTime(outdoorState.elapsedTime)}
+                </p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Duration</p>
+              </div>
+              <div className="text-center p-4 bg-light-gray dark:bg-dark-bg rounded-xl">
+                <MapPin className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                <p className="text-2xl font-bold text-deep-navy dark:text-dark-text">
+                  {formatDistance(outdoorState.distance)}
+                </p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Distance</p>
+              </div>
+            </div>
+
+            {/* Secondary Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-3 bg-light-gray dark:bg-dark-bg rounded-lg">
+                <Flame className="h-4 w-4 mx-auto mb-1 text-orange-500" />
+                <p className="text-lg font-semibold text-deep-navy dark:text-dark-text">
+                  {outdoorState.calories}
+                </p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Calories</p>
+              </div>
+              <div className="text-center p-3 bg-light-gray dark:bg-dark-bg rounded-lg">
+                <TrendingUp className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                <p className="text-lg font-semibold text-deep-navy dark:text-dark-text">
+                  {outdoorState.pace}
+                </p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">Pace</p>
+              </div>
+              <div className="text-center p-3 bg-light-gray dark:bg-dark-bg rounded-lg">
+                <Zap className="h-4 w-4 mx-auto mb-1 text-yellow-500" />
+                <p className="text-lg font-semibold text-deep-navy dark:text-dark-text">
+                  {outdoorState.currentSpeed.toFixed(1)}
+                </p>
+                <p className="text-xs text-medium-gray dark:text-dark-muted">km/h</p>
+              </div>
+            </div>
+
+            {/* GPS Status */}
+            <div className="flex items-center justify-between p-3 bg-light-gray dark:bg-dark-bg rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Navigation className="h-4 w-4 text-bright-blue" />
+                <span className="text-sm text-deep-navy dark:text-dark-text">GPS Accuracy</span>
+              </div>
+              <Badge variant={outdoorState.gpsAccuracy < 10 ? "default" : "secondary"}>
+                {outdoorState.gpsAccuracy < 10 ? "Excellent" : "Good"}
+              </Badge>
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex space-x-3">
+              {outdoorState.isTracking ? (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={pauseOutdoorActivity}
+                  >
+                    <Pause className="h-4 w-4 mr-2" />
+                    Pause
+                  </Button>
+                  <Button
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                    onClick={stopOutdoorActivity}
+                  >
+                    <StopCircle className="h-4 w-4 mr-2" />
+                    Stop
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowOutdoorTracker(false)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 bg-primary-gradient hover:opacity-90 text-white"
+                    onClick={resumeOutdoorActivity}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Resume
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Save Button */}
+            {!outdoorState.isTracking && outdoorState.elapsedTime > 0 && (
+              <Button
+                className="w-full bg-green-500 hover:bg-green-600 text-white"
+                onClick={stopOutdoorActivity}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Workout
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

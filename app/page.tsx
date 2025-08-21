@@ -19,6 +19,7 @@ import WeightTrackingPage from "@/components/weight-tracking-page"
 import SleepTrackingPage from "@/components/sleep-tracking-page"
 import StrengthTrainingPage from "@/components/strength-training-page"
 import OutdoorActivityPage from "@/components/outdoor-activity-page"
+import WorkoutHistoryPage from "@/components/workout-history-page"
 import SettingsPage from "@/components/settings-page"
 import ChatPage from "@/components/chat-page"
 import RadialMenu from "@/components/radial-menu"
@@ -37,6 +38,7 @@ const additionalPages = {
   goals: GoalsPage,
   food: FoodTrackingPage,
   workout: WorkoutTrackingPage,
+  "workout-history": WorkoutHistoryPage,
   water: WaterTrackingPage,
   weight: WeightTrackingPage,
   sleep: SleepTrackingPage,
