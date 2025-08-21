@@ -115,6 +115,7 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
   const [searchTerm, setSearchTerm] = useState('')
   const [setTypeDialogOpen, setSetTypeDialogOpen] = useState(false)
   const [setTypeDialogTarget, setSetTypeDialogTarget] = useState<{ exerciseId: string; setId: string } | null>(null)
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs')
   
   // Create program states
   const [newProgramName, setNewProgramName] = useState("")
@@ -322,6 +323,17 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
     }).format(date)
   }
 
+  const convertWeight = (weight: number, fromUnit: 'lbs' | 'kg', toUnit: 'lbs' | 'kg'): number => {
+    if (fromUnit === toUnit) return weight
+    if (fromUnit === 'lbs' && toUnit === 'kg') {
+      return Math.round(weight * 0.453592 * 10) / 10
+    }
+    if (fromUnit === 'kg' && toUnit === 'lbs') {
+      return Math.round(weight * 2.20462 * 10) / 10
+    }
+    return weight
+  }
+
   const startNewWorkout = () => {
     const newWorkout: Workout = {
       id: Date.now().toString(),
@@ -472,12 +484,19 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
   }
 
   const completeSet = (exerciseId: string, setId: string) => {
-    updateSet(exerciseId, setId, { isCompleted: true })
-    // Start rest timer
-    const exercise = currentWorkout?.exercises.find(ex => ex.id === exerciseId)
-    if (exercise) {
-      setRestTimer(exercise.restBetweenSets)
-      setIsRestTimerRunning(true)
+    const currentSet = currentWorkout?.exercises
+      .find(ex => ex.id === exerciseId)?.sets
+      .find(set => set.id === setId)
+    
+    updateSet(exerciseId, setId, { isCompleted: !currentSet?.isCompleted })
+    
+    // Start rest timer only if completing the set
+    if (!currentSet?.isCompleted) {
+      const exercise = currentWorkout?.exercises.find(ex => ex.id === exerciseId)
+      if (exercise) {
+        setRestTimer(exercise.restBetweenSets)
+        setIsRestTimerRunning(true)
+      }
     }
   }
 
@@ -492,7 +511,8 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
           ...set,
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           isCompleted: false,
-          type: set.type || 'normal'
+          type: set.type || 'normal',
+          weight: weightUnit === 'kg' ? convertWeight(set.weight, 'lbs', 'kg') : set.weight
         }))
       })),
       startTime: new Date(),
@@ -620,40 +640,77 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-light text-deep-navy dark:text-dark-text">Strength Training</h1>
-        <Button variant="ghost" size="icon">
-          <Settings className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-6 px-2 text-xs ${
+                        weightUnit === 'lbs'
+                          ? 'bg-bright-blue text-white hover:bg-bright-blue'
+                          : 'text-deep-navy dark:text-dark-text'
+                      }`}
+                      onClick={() => setWeightUnit('lbs')}
+                    >
+                      lbs
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-6 px-2 text-xs ${
+                        weightUnit === 'kg'
+                          ? 'bg-bright-blue text-white hover:bg-bright-blue'
+                          : 'text-deep-navy dark:text-dark-text'
+                      }`}
+                      onClick={() => setWeightUnit('kg')}
+                    >
+                      kg
+                    </Button>
+          </div>
+          <Button variant="ghost" size="icon">
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Timer Display for Active Workout */}
+      {/* Active Workout Header */}
       {currentWorkout && (
-        <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-center">
-                <p className="text-sm text-medium-gray dark:text-dark-muted">Workout Time</p>
-                <p className="text-2xl font-bold text-deep-navy dark:text-dark-text">{formatTime(workoutTimer)}</p>
+        <Card className="p-3 sm:p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            {/* Time Chips */}
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-[220px] ">
+              <div className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-left">
+                <p className="text-[11px] leading-none text-medium-gray dark:text-dark-muted">Workout</p>
+                <p className="text-[11px] leading-none text-medium-gray dark:text-dark-muted">Time</p>
+                <p className="mt-1 text-xl sm:text-2xl font-extrabold text-deep-navy dark:text-dark-text font-mono tabular-nums tracking-normal min-w-[5ch] text-center">
+                  {formatTime(workoutTimer)}
+                </p>
               </div>
               {restTimer > 0 && (
-                <div className="text-center">
-                  <p className="text-sm text-medium-gray dark:text-dark-muted">Rest</p>
-                  <p className="text-xl font-bold text-orange-500">{formatTime(restTimer)}</p>
+                <div className="px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-left hi">
+                  <p className="text-[11px] leading-none text-medium-gray dark:text-dark-muted">Rest</p>
+                  <p className="mt-1 text-lg sm:text-xl font-extrabold text-orange-500 font-mono tabular-nums tracking-normal min-w-[5ch] text-center">
+                    {formatTime(restTimer)}
+                  </p>
                 </div>
               )}
             </div>
-            <div className="flex space-x-2">
-              {isTimerRunning ? (
-                <Button variant="outline" onClick={() => setIsTimerRunning(false)}>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setIsTimerRunning(true)}>
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume
-                </Button>
-              )}
-              <Button variant="destructive" onClick={finishWorkout}>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+                className="h-9 sm:h-10 rounded-lg px-3 sm:px-4 min-w-[96px] sm:min-w-[110px]"
+              >
+                {isTimerRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                {isTimerRunning ? 'Pause' : 'Resume'}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={finishWorkout}
+                className="h-9 sm:h-10 rounded-lg px-3 sm:px-5 min-w-[96px] sm:min-w-[110px]"
+              >
                 <X className="h-4 w-4 mr-2" />
                 Finish
               </Button>
@@ -802,13 +859,41 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Workout Name */}
+              {/* Workout Name and Unit Toggle */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-deep-navy dark:text-dark-text">{currentWorkout.name}</h2>
-                <Button variant="outline" size="sm" onClick={() => setShowExerciseDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Exercise
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-6 px-2 text-xs ${
+                        weightUnit === 'lbs'
+                          ? 'bg-bright-blue text-white hover:bg-bright-blue'
+                          : 'text-deep-navy dark:text-dark-text'
+                      }`}
+                      onClick={() => setWeightUnit('lbs')}
+                    >
+                      lbs
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-6 px-2 text-xs ${
+                        weightUnit === 'kg'
+                          ? 'bg-bright-blue text-white hover:bg-bright-blue'
+                          : 'text-deep-navy dark:text-dark-text'
+                      }`}
+                      onClick={() => setWeightUnit('kg')}
+                    >
+                      kg
+                    </Button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setShowExerciseDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Exercise
+                  </Button>
+                </div>
               </div>
 
               {/* Exercises */}
@@ -826,72 +911,89 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                     </Button>
                   </div>
 
-                  {/* Sets */}
-                  <div className="space-y-2">
-                    {exercise.sets.map((set, index) => (
-                      <div key={set.id} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-8 h-6 p-0 text-sm font-medium text-deep-navy dark:text-dark-text"
-                          onClick={() => openSetTypeDialog(exercise.id, set.id)}
-                        >
-                          {getSetShortLabel(set, index)}
-                        </Button>
-                        
-                        <Input
-                          type="number"
-                          placeholder="Reps"
-                          value={set.reps}
-                          onChange={(e) => updateSet(exercise.id, set.id, { reps: parseInt(e.target.value) || 0 })}
-                          className="w-16 h-8 text-sm"
-                        />
-                        
-                        <Input
-                          type="number"
-                          placeholder="Weight"
-                          value={set.weight}
-                          onChange={(e) => updateSet(exercise.id, set.id, { weight: parseInt(e.target.value) || 0 })}
-                          className="w-16 h-8 text-sm"
-                        />
-                        
-                        <span className="text-xs text-medium-gray dark:text-dark-muted">lbs</span>
-                        
-                        <div className="flex space-x-1" />
-                        
-                        <Button
-                          variant={set.isCompleted ? "default" : "outline"}
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => completeSet(exercise.id, set.id)}
-                        >
-                          {set.isCompleted ? <CheckCircle className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        </Button>
+                                     {/* Sets */}
+                   <div className="space-y-3">
+                     {exercise.sets.map((set, index) => (
+                       <div key={set.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                         {/* Set Number/Type */}
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 font-bold"
+                           onClick={() => openSetTypeDialog(exercise.id, set.id)}
+                         >
+                           {getSetShortLabel(set, index)}
+                         </Button>
+                         
+                         {/* Reps Input */}
+                         <div className="flex-1 min-w-0">
+                           <Input
+                             type="number"
+                             placeholder="Reps"
+                             value={set.reps || ''}
+                             onChange={(e) => updateSet(exercise.id, set.id, { reps: parseInt(e.target.value) || 0 })}
+                             className="text-center font-semibold bg-white dark:bg-gray-800"
+                           />
+                           <p className="text-xs text-gray-500 text-center mt-1">reps</p>
+                         </div>
+                         
+                         {/* Weight Input */}
+                         <div className="flex-1 min-w-0">
+                           <Input
+                             type="number"
+                             placeholder="Weight"
+                             value={convertWeight(set.weight, 'lbs', weightUnit) || ''}
+                             onChange={(e) => {
+                               const convertedWeight = convertWeight(parseInt(e.target.value) || 0, weightUnit, 'lbs')
+                               updateSet(exercise.id, set.id, { weight: convertedWeight })
+                             }}
+                             className="text-center font-semibold bg-white dark:bg-gray-800"
+                           />
+                           <p className="text-xs text-gray-500 text-center mt-1">{weightUnit}</p>
+                         </div>
+                         
+                         {/* Complete Button */}
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           className={`w-10 h-10 rounded-full transition-all ${
+                             set.isCompleted 
+                               ? 'bg-bright-blue hover:bg-blue-400 text-white' 
+                               : 'bg-gray-200 dark:bg-gray-600 hover:bg-blue-100 dark:hover:bg-green-900/50'
+                           }`}
+                           onClick={() => completeSet(exercise.id, set.id)}
+                         >
+                           {set.isCompleted ? (
+                             <CheckCircle className="h-5 w-5" />
+                           ) : (
+                             <div className="w-5 h-5 border-2 border-gray-400 rounded-full" />
+                           )}
+                         </Button>
 
-                        {exercise.sets.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-red-500"
-                            onClick={() => removeSetFromExercise(exercise.id, set.id)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                         {/* Delete Set */}
+                         {exercise.sets.length > 1 && (
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             className="w-8 h-8 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                             onClick={() => removeSetFromExercise(exercise.id, set.id)}
+                           >
+                             <X className="h-4 w-4" />
+                           </Button>
+                         )}
+                       </div>
+                     ))}
+                   </div>
 
-                  <div className="flex space-x-2 mt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => addSetToExercise(exercise.id)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Set
-                    </Button>
-                  </div>
+                                     {/* Add Set Button */}
+                   <Button
+                     variant="ghost"
+                     onClick={() => addSetToExercise(exercise.id)}
+                     className="w-full mt-4 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 text-gray-600 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400"
+                   >
+                     <Plus className="h-4 w-4 mr-2" />
+                     Add Set
+                   </Button>
                 </Card>
               ))}
             </div>
@@ -1234,7 +1336,7 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                           </span>
                           
                           <span className="text-sm text-deep-navy dark:text-dark-text w-16">
-                            {set.weight} lbs
+                            {convertWeight(set.weight, 'lbs', weightUnit)} {weightUnit}
                           </span>
                           
                           <div className="flex space-x-1">
@@ -1248,9 +1350,9 @@ export default function StrengthTrainingPage({ onNavigateToPage, onNavigateToTab
                           
                           <div className="ml-auto">
                             {set.isCompleted ? (
-                              <Badge variant="default" className="text-xs">✓</Badge>
+                              <CheckCircle className="h-4 w-4 text-green-600" />
                             ) : (
-                              <Badge variant="outline" className="text-xs">×</Badge>
+                              <div className="h-4 w-4 border-2 border-gray-400 rounded-full" />
                             )}
                           </div>
                         </div>
