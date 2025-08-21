@@ -3,23 +3,22 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { 
   Search, 
   Plus, 
   Camera, 
-  Barcode, 
-  Flame, 
-  Apple, 
   Coffee, 
-  Sandwich,
   Utensils,
   ChevronLeft,
-  Mic,
+  ChevronDown,
   MoreHorizontal,
-  Trash2,
-  Salad
+  Clock,
+  Settings,
+  X,
+  ChevronRight,
+  TrendingUp,
+  Flame
 } from "lucide-react"
 import { 
   Select,
@@ -29,9 +28,8 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface FoodTrackingPageProps {
   onNavigateToPage?: (page: string) => void
@@ -46,6 +44,7 @@ interface FoodItem {
   protein: number
   carbs: number
   fat: number
+  serving?: string
 }
 
 interface Meal {
@@ -58,8 +57,6 @@ interface Meal {
 interface RecentItem extends FoodItem {
   lastUsed: string // ISO timestamp
 }
-
-const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"]
 
 function generateId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -78,91 +75,85 @@ function todayKey() {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function relativeTimeFromNow(iso: string) {
-  const then = new Date(iso).getTime()
-  const now = Date.now()
-  const diff = Math.max(0, Math.floor((now - then) / 1000))
-  const mins = Math.floor(diff / 60)
-  const hrs = Math.floor(mins / 60)
-  const days = Math.floor(hrs / 24)
-  if (diff < 60) return "just now"
-  if (mins < 60) return `${mins} min ago`
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`
-  return `${days} day${days === 1 ? "" : "s"} ago`
-}
-
 export default function FoodTrackingPage({ onNavigateToPage, onNavigateToTab }: FoodTrackingPageProps) {
   const { toast } = useToast()
 
+  const [currentView, setCurrentView] = useState<'main' | 'search' | 'food-detail'>('main')
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
+  const [selectedMealType, setSelectedMealType] = useState<string>('')
   const [meals, setMeals] = useState<Meal[]>([])
-  const [activeMealId, setActiveMealId] = useState<string>("")
   const [search, setSearch] = useState<string>("")
-  const [recentItems, setRecentItems] = useState<RecentItem[]>([])
-  const [userFoods, setUserFoods] = useState<FoodItem[]>([])
+  const [dailyCalorieTarget, setDailyCalorieTarget] = useState<number>(1550)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
+  const [datePopoverOpen, setDatePopoverOpen] = useState<boolean>(false)
 
-  const [customName, setCustomName] = useState<string>("")
-  const [customCalories, setCustomCalories] = useState<string>("")
-  const [customProtein, setCustomProtein] = useState<string>("")
-  const [customCarbs, setCustomCarbs] = useState<string>("")
-  const [customFat, setCustomFat] = useState<string>("")
-  const [customMealId, setCustomMealId] = useState<string>("")
-  const [customSaveToMyFoods, setCustomSaveToMyFoods] = useState<boolean>(true)
+  function dateKey(d: Date) {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    const dd = String(d.getDate()).padStart(2, "0")
+    return `${yyyy}-${mm}-${dd}`
+  }
 
-  const storageMealsKey = `foodTracking:meals:${todayKey()}`
-  const storageActiveMealKey = `foodTracking:activeMeal:${todayKey()}`
-  const storageRecentKey = `foodTracking:recentItems`
-  const storageUserFoodsKey = `foodTracking:userFoods`
+  function storageKeyForDate(d: Date) {
+    return `foodTracking:meals:${dateKey(d)}`
+  }
 
+  function displayDateLabel(d: Date) {
+    const today = new Date()
+    const diffMs = new Date(today.toDateString()).getTime() - new Date(d.toDateString()).getTime()
+    const dayMs = 24 * 60 * 60 * 1000
+    const diffDays = Math.round(diffMs / dayMs)
+    if (diffDays === 0) return "Today"
+    if (diffDays === 1) return "Yesterday"
+    if (diffDays === 2) return "Day before yesterday"
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  }
+
+  function startOfWeek(d: Date) {
+    const tmp = new Date(d)
+    const day = (tmp.getDay() + 6) % 7 // Monday = 0
+    tmp.setDate(tmp.getDate() - day)
+    tmp.setHours(0, 0, 0, 0)
+    return tmp
+  }
+
+  function isSameDay(a: Date, b: Date) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  }
+
+  // Load meals when selected date changes
   useEffect(() => {
     try {
-      const savedMeals = typeof window !== "undefined" ? localStorage.getItem(storageMealsKey) : null
-      const savedActive = typeof window !== "undefined" ? localStorage.getItem(storageActiveMealKey) : null
-      const savedRecent = typeof window !== "undefined" ? localStorage.getItem(storageRecentKey) : null
-      const savedUserFoods = typeof window !== "undefined" ? localStorage.getItem(storageUserFoodsKey) : null
-      if (savedMeals) {
-        const parsed: Meal[] = JSON.parse(savedMeals)
-        setMeals(parsed)
-        if (parsed.length > 0 && !savedActive) setActiveMealId(parsed[0].id)
+      const raw = localStorage.getItem(storageKeyForDate(selectedDate))
+      if (raw) {
+        setMeals(JSON.parse(raw))
       } else {
-        const seed: Meal[] = [
-          { id: generateId(), type: "Breakfast", time: formatNowTime(), items: [] }
-        ]
-        setMeals(seed)
-        setActiveMealId(seed[0].id)
+        setMeals([])
       }
-      if (savedActive) setActiveMealId(savedActive)
-      if (savedRecent) setRecentItems(JSON.parse(savedRecent))
-      if (savedUserFoods) setUserFoods(JSON.parse(savedUserFoods))
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    setWeekStart(startOfWeek(selectedDate))
+  }, [selectedDate])
 
+  // Persist meals for selected date
   useEffect(() => {
-    if (typeof window === "undefined") return
-    localStorage.setItem(storageMealsKey, JSON.stringify(meals))
-  }, [meals])
+    try {
+      localStorage.setItem(storageKeyForDate(selectedDate), JSON.stringify(meals))
+    } catch {}
+  }, [meals, selectedDate])
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (activeMealId) localStorage.setItem(storageActiveMealKey, activeMealId)
-  }, [activeMealId])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    localStorage.setItem(storageRecentKey, JSON.stringify(recentItems))
-  }, [recentItems])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    localStorage.setItem(storageUserFoodsKey, JSON.stringify(userFoods))
-  }, [userFoods])
-
-  const quickAddItems = [
-    { name: "Apple", calories: 95, icon: Apple, category: "Fruit", protein: 0, carbs: 25, fat: 0 },
-    { name: "Coffee", calories: 5, icon: Coffee, category: "Drink", protein: 0, carbs: 1, fat: 0 },
-    { name: "Sandwich", calories: 350, icon: Sandwich, category: "Meal", protein: 15, carbs: 40, fat: 12 },
-    { name: "Greek Yogurt", calories: 130, icon: Utensils, category: "Dairy", protein: 11, carbs: 9, fat: 5 },
-    { name: "Salad", calories: 100, icon: Salad, category: "Vegetable", protein: 1, carbs: 10, fat: 0 },
+  const frequentlyTrackedFoods = [
+    { name: "Tea", calories: 73, protein: 0.1, carbs: 0.2, fat: 0, serving: "1.0 teacup" },
+    { name: "Boiled Egg", calories: 155, protein: 13, carbs: 1, fat: 11, serving: "2.0 large" },
+    { name: "Banana", calories: 55, protein: 1.3, carbs: 27.5, fat: 0.3, serving: "1.0 small(4.5\" long)" },
+    { name: "Roti", calories: 85, protein: 3, carbs: 18, fat: 1, serving: "1.0 roti/chapati" },
+    { name: "Almond", calories: 37, protein: 1.4, carbs: 1.4, fat: 3.2, serving: "5.0 almond" },
+    { name: "Milk", calories: 168, protein: 8, carbs: 12, fat: 9, serving: "1.0 glass" },
+    { name: "Idli", calories: 146, protein: 4, carbs: 28, fat: 2, serving: "2.0 idli(regular)" },
+    { name: "Apple", calories: 88, protein: 0.4, carbs: 23, fat: 0.3, serving: "1.0 small (2-3/4\" dia)" },
+    { name: "Walnut", calories: 28, protein: 0.7, carbs: 0.6, fat: 2.8, serving: "2.0 piece(half of one)" },
+    { name: "Dosa", calories: 221, protein: 6, carbs: 35, fat: 6, serving: "1.5 medium" },
+    { name: "Poha", calories: 69, protein: 2, carbs: 13, fat: 1, serving: "0.5 katori" }
   ]
 
   const nutritionSummary = useMemo(() => {
@@ -178,617 +169,450 @@ export default function FoodTrackingPage({ onNavigateToPage, onNavigateToTab }: 
       },
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     )
-    const targets = { calories: 2000, protein: 120, carbs: 250, fat: 65 }
-    return {
-      calories: { current: totals.calories, target: targets.calories, remaining: Math.max(0, targets.calories - totals.calories) },
-      protein: { current: totals.protein, target: targets.protein, remaining: Math.max(0, targets.protein - totals.protein) },
-      carbs: { current: totals.carbs, target: targets.carbs, remaining: Math.max(0, targets.carbs - totals.carbs) },
-      fat: { current: totals.fat, target: targets.fat, remaining: Math.max(0, targets.fat - totals.fat) }
-    }
+    return totals
   }, [meals])
 
-  function ensureActiveMeal(defaultType: MealType = "Breakfast") {
-    if (meals.length === 0) {
-      const m: Meal = { id: generateId(), type: defaultType, time: formatNowTime(), items: [] }
-      setMeals([m])
-      setActiveMealId(m.id)
-      return m.id
+  function addItemToMeal(mealType: string, item: FoodItem) {
+    const newMeal: Meal = {
+      id: generateId(),
+      type: mealType,
+      time: formatNowTime(),
+      items: [item]
     }
-    if (!activeMealId) {
-      setActiveMealId(meals[0].id)
-      return meals[0].id
-    }
-    return activeMealId
+    setMeals((prev) => [...prev, newMeal])
   }
 
-  function addMeal(type: MealType | string) {
-    const m: Meal = { id: generateId(), type, time: formatNowTime(), items: [] }
-    setMeals((prev) => [...prev, m])
-    setActiveMealId(m.id)
-    toast({ description: `Added ${type} meal` })
+  function getCaloriesForMealType(type: string): number {
+    return meals
+      .filter((m) => m.type === type)
+      .reduce((sum, m) => sum + m.items.reduce((s, it) => s + (it.calories || 0), 0), 0)
   }
 
-  function deleteMeal(id: string) {
-    setMeals((prev) => prev.filter((m) => m.id !== id))
-    if (activeMealId === id) {
-      const remaining = meals.filter((m) => m.id !== id)
-      setActiveMealId(remaining.length ? remaining[0].id : "")
-    }
-  }
-
-  function addItemToMeal(mealId: string, item: FoodItem) {
-    setMeals((prev) => prev.map((m) => (m.id === mealId ? { ...m, items: [...m.items, item] } : m)))
-    setRecentItems((prev) => {
-      const existingIdx = prev.findIndex((ri) => ri.name.toLowerCase() === item.name.toLowerCase())
-      const newEntry: RecentItem = { ...item, lastUsed: new Date().toISOString() }
-      if (existingIdx >= 0) {
-        const copy = [...prev]
-        copy.splice(existingIdx, 1)
-        return [newEntry, ...copy].slice(0, 30)
-      }
-      return [newEntry, ...prev].slice(0, 30)
-    })
-  }
-
-  function deleteItemFromMeal(mealId: string, index: number) {
-    setMeals((prev) => prev.map((m) => (m.id === mealId ? { ...m, items: m.items.filter((_, i) => i !== index) } : m)))
-  }
-
-  function handleQuickAddClick(q: { name: string; calories: number; protein: number; carbs: number; fat: number }) {
-    const targetMealId = ensureActiveMeal()
-    addItemToMeal(targetMealId, {
-      name: q.name,
-      calories: q.calories,
-      protein: q.protein,
-      carbs: q.carbs,
-      fat: q.fat
-    })
-    toast({ description: `Added ${q.name} to meal` })
-  }
-
-  function handleAddCustomItem() {
-    const name = customName.trim()
-    const mealId = customMealId || activeMealId || ensureActiveMeal()
-    if (!name) {
-      toast({ description: "Please enter a name" })
-      return
-    }
-    const calories = Number(customCalories) || 0
-    const protein = Number(customProtein) || 0
-    const carbs = Number(customCarbs) || 0
-    const fat = Number(customFat) || 0
-    addItemToMeal(mealId, { name, calories, protein, carbs, fat })
-    if (customSaveToMyFoods) addToUserFoodsIfMissing({ name, calories, protein, carbs, fat })
-    setCustomName("")
-    setCustomCalories("")
-    setCustomProtein("")
-    setCustomCarbs("")
-    setCustomFat("")
-    setCustomMealId("")
-    toast({ description: `Added ${name}` })
-  }
-
-  // Save to My Foods util
-  function addToUserFoodsIfMissing(item: FoodItem) {
-    setUserFoods((prev) => {
-      const exists = prev.some((f) => f.name.toLowerCase() === item.name.toLowerCase())
-      if (exists) return prev
-      return [item, ...prev].slice(0, 300)
-    })
-  }
-
-  // Search results composition
-  const searchResults: FoodItem[] = useMemo(() => {
-    if (!search.trim()) return []
-    const term = search.toLowerCase()
-    const fromQuick = quickAddItems
-      .filter((q) => q.name.toLowerCase().includes(term) || q.category.toLowerCase().includes(term))
-      .map((q) => ({ name: q.name, calories: q.calories, protein: q.protein, carbs: q.carbs, fat: q.fat }))
-    const fromRecent = recentItems
-      .filter((r) => r.name.toLowerCase().includes(term))
-      .map((r) => ({ name: r.name, calories: r.calories, protein: r.protein, carbs: r.carbs, fat: r.fat }))
-    const fromUser = userFoods.filter((u) => u.name.toLowerCase().includes(term))
-    const merged = [...fromUser, ...fromRecent, ...fromQuick]
-    const seen = new Set<string>()
-    const deduped: FoodItem[] = []
-    for (const it of merged) {
-      const key = it.name.toLowerCase()
-      if (seen.has(key)) continue
-      seen.add(key)
-      deduped.push(it)
-      if (deduped.length >= 20) break
-    }
-    return deduped
-  }, [search, recentItems, userFoods])
-
-  // Add Meal dialog state
-  const [addMealOpen, setAddMealOpen] = useState(false)
-  const [addMealType, setAddMealType] = useState<MealType | string>("Breakfast")
-  const [addFoodName, setAddFoodName] = useState("")
-  const [addFoodCalories, setAddFoodCalories] = useState("")
-  const [addFoodProtein, setAddFoodProtein] = useState("")
-  const [addFoodCarbs, setAddFoodCarbs] = useState("")
-  const [addFoodFat, setAddFoodFat] = useState("")
-  const [saveAddFoodToLibrary, setSaveAddFoodToLibrary] = useState<boolean>(true)
-
-  function submitAddMeal() {
-    const type = addMealType || "Custom"
-    const m: Meal = { id: generateId(), type, time: formatNowTime(), items: [] }
-    const initialFoodName = addFoodName.trim()
-    if (initialFoodName) {
-      const calories = Number(addFoodCalories) || 0
-      const protein = Number(addFoodProtein) || 0
-      const carbs = Number(addFoodCarbs) || 0
-      const fat = Number(addFoodFat) || 0
-      m.items.push({ name: initialFoodName, calories, protein, carbs, fat })
-      if (saveAddFoodToLibrary) addToUserFoodsIfMissing({ name: initialFoodName, calories, protein, carbs, fat })
-    }
-    setMeals((prev) => [...prev, m])
-    setActiveMealId(m.id)
-    setAddMealOpen(false)
-    setAddMealType("Breakfast")
-    setAddFoodName("")
-    setAddFoodCalories("")
-    setAddFoodProtein("")
-    setAddFoodCarbs("")
-    setAddFoodFat("")
-    toast({ description: `Added ${type} meal` })
-  }
-
-  return (
-    <div className="p-4 space-y-6">
+  // Main view component
+  const MainView = () => (
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => onNavigateToTab?.("add-activity")}
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-light text-deep-navy dark:text-dark-text">Food Tracking</h1>
-        <Button variant="ghost" size="icon">
-          <MoreHorizontal className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-medium-gray" />
-        <Input
-          placeholder="Search foods, meals, or scan barcode..."
-          className="pl-10 pr-20 bg-light-gray dark:bg-dark-bg border-border-gray dark:border-dark-border"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ description: "Camera scanning coming soon" })}>
-            <Camera className="h-4 w-4" />
+      <div className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => onNavigateToTab?.("add-activity")}
+          >
+            <ChevronLeft className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ description: "Barcode scanning coming soon" })}>
-            <Barcode className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ description: "Voice logging coming soon" })}>
-            <Mic className="h-4 w-4" />
-          </Button>
+          <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="flex items-center space-x-2">
+                <span className="text-lg font-medium">{displayDateLabel(selectedDate)}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="center" className="w-[360px]">
+              <div className="flex items-center justify-between mb-3">
+                <Button variant="ghost" size="icon" onClick={() => setWeekStart(new Date(weekStart.getTime() - 7*24*60*60*1000))}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-sm font-medium">
+                  {weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  {" - "}
+                  {new Date(weekStart.getTime() + 6*24*60*60*1000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setWeekStart(new Date(weekStart.getTime() + 7*24*60*60*1000))}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-stretch justify-between">
+                {Array.from({ length: 7 }).map((_, i) => {
+                  const d = new Date(weekStart.getTime() + i*24*60*60*1000)
+                  const isSelected = isSameDay(d, selectedDate)
+                  const isFuture = d > new Date(new Date().toDateString())
+                  const dayName = d.toLocaleDateString(undefined, { weekday: "short" }).slice(0,1)
+                  return (
+                    <button
+                      key={i}
+                      disabled={false}
+                      onClick={() => { setSelectedDate(d); setDatePopoverOpen(false) }}
+                      className={`flex flex-col items-center justify-center w-12 py-2 rounded-md ${isSelected ? 'bg-gray-200 dark:bg-dark-bg' : ''} ${isFuture ? 'opacity-50' : ''}`}
+                    >
+                      <div className="text-base font-semibold">{d.getDate()}</div>
+                      <div className="text-xs mt-1">{dayName}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Search Results */}
-      {searchResults.length > 0 && (
-        <Card className="p-3 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-          <div className="space-y-2">
-            {searchResults.map((res, idx) => (
-              <div key={`${res.name}-${idx}`} className="flex items-center justify-between py-1">
-                <div>
-                  <p className="text-sm text-deep-navy dark:text-dark-text">{res.name}</p>
-                  <p className="text-xs text-medium-gray dark:text-dark-muted">P {res.protein}g • C {res.carbs}g • F {res.fat}g</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-bright-blue">{res.calories} cal</span>
-                  <Button size="sm" variant="ghost" onClick={() => { addItemToMeal(ensureActiveMeal(), res); addToUserFoodsIfMissing(res); }}>
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
+      <div className="p-4 space-y-4">
+        {/* Intermittent Fasting Card */}
+        <Card className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border">
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gray-100 dark:bg-dark-bg rounded-full flex items-center justify-center">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-dark-text">Set up Intermittent Fasting</p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className="text-sm text-gray-500">Recommended Plan</span>
+                  <span className="text-lg font-semibold">14 hrs</span>
                 </div>
               </div>
-            ))}
+            </div>
+            <Button className="bg-black text-white hover:bg-gray-800 rounded-full px-6">
+              Get Started
+            </Button>
           </div>
         </Card>
-      )}
 
-      {/* Active meal selector & Add Meal */}
-      <Card className="p-3 border border-border-gray dark:border-dark-border bg-transparent dark:bg-transparent">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-medium-gray dark:text-dark-muted">Active meal</span>
-            <Select value={activeMealId} onValueChange={(v) => setActiveMealId(v)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select meal" />
-              </SelectTrigger>
-              <SelectContent>
-                {meals.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Add Meal
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[520px]">
-                <DialogHeader>
-                  <DialogTitle>Add Meal</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Meal type</Label>
-                    <Select value={addMealType} onValueChange={(v) => setAddMealType(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MEAL_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                        <SelectItem value="Custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                    <div className="space-y-1 md:col-span-2">
-                      <Label className="text-xs">Food (optional)</Label>
-                      <Input placeholder="e.g., Scrambled eggs" value={addFoodName} onChange={(e) => setAddFoodName(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Cal</Label>
-                      <Input value={addFoodCalories} onChange={(e) => setAddFoodCalories(e.target.value)} inputMode="numeric" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">P</Label>
-                      <Input value={addFoodProtein} onChange={(e) => setAddFoodProtein(e.target.value)} inputMode="numeric" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">C</Label>
-                      <Input value={addFoodCarbs} onChange={(e) => setAddFoodCarbs(e.target.value)} inputMode="numeric" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">F</Label>
-                      <Input value={addFoodFat} onChange={(e) => setAddFoodFat(e.target.value)} inputMode="numeric" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="saveAddLib" checked={saveAddFoodToLibrary} onCheckedChange={(v) => setSaveAddFoodToLibrary(Boolean(v))} />
-                    <Label htmlFor="saveAddLib" className="text-xs">Save added food to My Foods</Label>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={submitAddMeal}>Add Meal</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" size="sm" onClick={() => addMeal("Snack")}>Quick Snack</Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Quick Add */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Quick Add</h2>
-        <div className="flex space-x-3 overflow-x-auto pb-2">
-          {quickAddItems
-            .filter((q) => q.name.toLowerCase().includes(search.toLowerCase()) || q.category.toLowerCase().includes(search.toLowerCase()))
-            .map((item, index) => {
-            const Icon = item.icon
-            return (
-              <Card
-                key={index}
-                className="p-3 border border-border-gray dark:border-dark-border min-w-[120px] flex-shrink-0 cursor-pointer hover:bg-light-gray dark:hover:bg-dark-bg transition-colors bg-white dark:bg-dark-card"
-                onClick={() => handleQuickAddClick(item)}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center">
-                    <Icon className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{item.name}</p>
-                    <p className="text-xs text-medium-gray dark:text-dark-muted">{item.category}</p>
-                    <p className="text-xs text-bright-blue">{item.calories} cal</p>
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Add Custom Item */}
-      <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-        <h3 className="font-medium text-deep-navy dark:text-dark-text mb-3">Add Custom Item</h3>
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Name</Label>
-            <Input placeholder="e.g., Oatmeal" value={customName} onChange={(e) => setCustomName(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Calories</Label>
-            <Input placeholder="kcal" value={customCalories} onChange={(e) => setCustomCalories(e.target.value)} inputMode="numeric" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Protein (g)</Label>
-            <Input placeholder="g" value={customProtein} onChange={(e) => setCustomProtein(e.target.value)} inputMode="numeric" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Carbs (g)</Label>
-            <Input placeholder="g" value={customCarbs} onChange={(e) => setCustomCarbs(e.target.value)} inputMode="numeric" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Fat (g)</Label>
-            <Input placeholder="g" value={customFat} onChange={(e) => setCustomFat(e.target.value)} inputMode="numeric" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Meal</Label>
-            <Select value={customMealId || activeMealId} onValueChange={(v) => setCustomMealId(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose meal" />
-              </SelectTrigger>
-              <SelectContent>
-                {meals.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Checkbox id="saveMyFood" checked={customSaveToMyFoods} onCheckedChange={(v) => setCustomSaveToMyFoods(Boolean(v))} />
-            <Label htmlFor="saveMyFood" className="text-xs">Save to My Foods</Label>
-          </div>
-          <Button size="sm" onClick={handleAddCustomItem}>
-            <Plus className="h-4 w-4 mr-1" /> Add Item
-          </Button>
-        </div>
-      </Card>
-
-      {/* Nutrition Summary */}
-      <Card className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-        <h3 className="font-medium text-deep-navy dark:text-dark-text mb-3">Today's Summary</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {/* Calories */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-medium-gray dark:text-dark-muted">Calories</span>
-              <span className="text-sm font-medium text-deep-navy dark:text-dark-text">
-                {nutritionSummary.calories.current} / {nutritionSummary.calories.target}
-              </span>
-            </div>
-            <div className="w-full bg-light-gray dark:bg-dark-bg rounded-full h-2">
-              <div
-                className="bg-bright-blue h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(nutritionSummary.calories.current / nutritionSummary.calories.target) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-medium-gray dark:text-dark-muted">
-              {nutritionSummary.calories.remaining} remaining
-            </p>
-          </div>
-          
-          {/* Protein */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-medium-gray dark:text-dark-muted">Protein</span>
-              <span className="text-sm font-medium text-deep-navy dark:text-dark-text">
-                {nutritionSummary.protein.current}g / {nutritionSummary.protein.target}g
-              </span>
-            </div>
-            <div className="w-full bg-light-gray dark:bg-dark-bg rounded-full h-2">
-              <div
-                className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(nutritionSummary.protein.current / nutritionSummary.protein.target) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-medium-gray dark:text-dark-muted">
-              {nutritionSummary.protein.remaining}g remaining
-            </p>
-          </div>
-
-          {/* Carbs */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-medium-gray dark:text-dark-muted">Carbs</span>
-              <span className="text-sm font-medium text-deep-navy dark:text-dark-text">
-                {nutritionSummary.carbs.current}g / {nutritionSummary.carbs.target}g
-              </span>
-            </div>
-            <div className="w-full bg-light-gray dark:bg-dark-bg rounded-full h-2">
-              <div
-                className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(nutritionSummary.carbs.current / nutritionSummary.carbs.target) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-medium-gray dark:text-dark-muted">
-              {nutritionSummary.carbs.remaining}g remaining
-            </p>
-          </div>
-
-          {/* Fats */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-medium-gray dark:text-dark-muted">Fats</span>
-              <span className="text-sm font-medium text-deep-navy dark:text-dark-text">
-                {nutritionSummary.fat.current}g / {nutritionSummary.fat.target}g
-              </span>
-            </div>
-            <div className="w-full bg-light-gray dark:bg-dark-bg rounded-full h-2">
-              <div
-                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(nutritionSummary.fat.current / nutritionSummary.fat.target) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-medium-gray dark:text-dark-muted">
-              {nutritionSummary.fat.remaining}g remaining
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Today's Meals */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Today's Meals</h2>
-          <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-bright-blue">
-                <Plus className="h-4 w-4 mr-1" />
-                Add Meal
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[520px]">
-              <DialogHeader>
-                <DialogTitle>Add Meal</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Meal type</Label>
-                  <Select value={addMealType} onValueChange={(v) => setAddMealType(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MEAL_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                      <SelectItem value="Custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                  <div className="space-y-1 md:col-span-2">
-                    <Label className="text-xs">Food (optional)</Label>
-                    <Input placeholder="e.g., Scrambled eggs" value={addFoodName} onChange={(e) => setAddFoodName(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Cal</Label>
-                    <Input value={addFoodCalories} onChange={(e) => setAddFoodCalories(e.target.value)} inputMode="numeric" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">P</Label>
-                    <Input value={addFoodProtein} onChange={(e) => setAddFoodProtein(e.target.value)} inputMode="numeric" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">C</Label>
-                    <Input value={addFoodCarbs} onChange={(e) => setAddFoodCarbs(e.target.value)} inputMode="numeric" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">F</Label>
-                    <Input value={addFoodFat} onChange={(e) => setAddFoodFat(e.target.value)} inputMode="numeric" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="saveAddLib2" checked={saveAddFoodToLibrary} onCheckedChange={(v) => setSaveAddFoodToLibrary(Boolean(v))} />
-                  <Label htmlFor="saveAddLib2" className="text-xs">Save added food to My Foods</Label>
-                </div>
+        {/* Calorie Summary */}
+        <Card className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border">
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
+                <X className="h-4 w-4 text-blue-400" />
               </div>
-              <DialogFooter>
-                <Button onClick={submitAddMeal}>Add Meal</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-        
-        <div className="space-y-3">
-          {meals.map((meal) => {
-            const total = meal.items.reduce((acc, i) => acc + (i.calories || 0), 0)
-            return (
-              <Card key={meal.id} className="p-4 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="font-medium text-deep-navy dark:text-dark-text">{meal.type}</h3>
-                    <Badge variant="outline" className="text-xs">
-                      {meal.time}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center space-x-1">
-                      <Flame className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm font-medium text-deep-navy dark:text-dark-text">
-                        {total} cal
-                      </span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMeal(meal.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  {meal.items.length === 0 && (
-                    <div className="text-xs text-medium-gray dark:text-dark-muted">No items yet. Use Quick Add or Add Custom Item above.</div>
-                  )}
-                  {meal.items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b border-border-gray dark:border-dark-border last:border-b-0">
-                      <div>
-                        <p className="text-sm text-deep-navy dark:text-dark-text">{item.name}</p>
-                        <p className="text-xs text-medium-gray dark:text-dark-muted">
-                          P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-bright-blue">{item.calories} cal</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteItemFromMeal(meal.id, index)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-dark-text">Eat up to {dailyCalorieTarget} Cal</p>
+              </div>
+            </div>
+            <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-sky-600" />
+            </div>
+          </div>
+        </Card>
 
-      {/* Recent Items */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-light text-deep-navy dark:text-dark-text">Recent Items</h2>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border p-4 text-center">
+            <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <Utensils className="h-4 w-4 text-white" />
+            </div>
+            <p className="text-sm font-medium">Diet Plan</p>
+          </Card>
+          <Card className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border p-4 text-center">
+            <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <TrendingUp className="h-4 w-4 text-white" />
+            </div>
+            <p className="text-sm font-medium">Insights</p>
+          </Card>
+          <Card className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border p-4 text-center">
+            <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <Coffee className="h-4 w-4 text-white" />
+            </div>
+            <p className="text-sm font-medium">Recipes</p>
+          </Card>
+        </div>
+
+        {/* Meal Sections */}
+        {[ 
+          { name: "Breakfast", calories: 388, description: "All you need is some breakfast ☀️🍳" },
+          { name: "Morning Snack", calories: 194, description: "Get energized by grabbing a morning snack 🥜" },
+          { name: "Lunch", calories: 388, description: "Hey, here are some Healthy Lunch Suggestions for you" },
+          { name: "Evening Snack", calories: 194, description: "Refuel your body with a delicious evening snack 🍐" },
+          { name: "Dinner", calories: 388, description: "An early dinner can help you sleep better | 😴" }
+        ].map((meal) => {
+          const consumed = getCaloriesForMealType(meal.name)
+          return (
+          <div key={meal.name}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-dark-text">{meal.name}</h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">{consumed} of {meal.calories} Cal</span>
+                <Button 
+                  size="icon" 
+                  className="w-8 h-8 bg-blue-400 hover:bg-blue-500 text-white rounded-full"
+                  onClick={() => {
+                    setSelectedMealType(meal.name)
+                    setCurrentView('search')
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-white dark:bg-dark-card rounded-lg p-4 border border-gray-200 dark:border-dark-border mb-4">
+              <p className="text-sm text-gray-600 dark:text-dark-muted text-center">{meal.description}</p>
+            </div>
+          </div>
+        )})}
+
+        {/* More Options */}
         <div className="space-y-2">
-          {recentItems
-            .filter((ri) => ri.name.toLowerCase().includes(search.toLowerCase()))
-            .map((item, index) => (
-            <Card key={index} className="p-3 border border-border-gray dark:border-dark-border bg-white dark:bg-dark-card">
-              <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-dark-text">More</h3>
+          {[
+            { icon: X, title: "Calories and Nutrition Settings" },
+            { icon: Coffee, title: "Add/Remove Meals & Time" },
+            { icon: Flame, title: "Edit Meal Calories" },
+            { icon: Camera, title: "Snap Gallery" },
+            { icon: Clock, title: "Food Reminders" },
+            { icon: Utensils, title: "Share Feedback" }
+          ].map((item, index) => (
+            <Card key={index} className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border">
+              <div className="p-3 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-primary-gradient rounded-full flex items-center justify-center">
-                    <Utensils className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 bg-gray-500 rounded-lg flex items-center justify-center">
+                    <item.icon className="h-4 w-4 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-deep-navy dark:text-dark-text">{item.name}</p>
-                    <p className="text-xs text-medium-gray dark:text-dark-muted">{relativeTimeFromNow(item.lastUsed)}</p>
-                  </div>
+                  <span className="font-medium text-gray-900 dark:text-dark-text">{item.title}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-bright-blue">{item.calories} cal</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={() => handleQuickAddClick(item)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
               </div>
             </Card>
           ))}
-          {recentItems.filter((ri) => ri.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-            <div className="text-xs text-medium-gray dark:text-dark-muted">No recent items yet. Add some food to see them here.</div>
-          )}
+        </div>
+      </div>
+
+      {/* Snap Button */}
+      {/* <div className="fixed bottom-6 right-6">
+        <Button 
+          className="w-16 h-16 bg-black hover:bg-gray-800 text-white rounded-full shadow-lg"
+          onClick={() => toast({ description: "Camera feature coming soon!" })}
+        >
+          <Camera className="h-6 w-6" />
+        </Button>
+      </div> */}
+    </div>
+  )
+
+  // Search view component
+  const SearchView = () => (
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      {/* Header */}
+      <div className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3">
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setCurrentView('main')}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-medium">Track {selectedMealType}</h1>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Camera Section */}
+        <Card className="bg-gray-600 text-white border-0 h-48 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Camera className="h-8 w-8" />
+            </div>
+            <p className="text-lg font-medium">Click a Snap and Track</p>
+          </div>
+        </Card>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search and Track"
+            className="pl-10 bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border rounded-full"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Frequently Tracked Foods */}
+        <div>
+          <h3 className="text-gray-500 text-sm mb-3">Frequently Tracked Foods</h3>
+          <div className="space-y-2">
+            {frequentlyTrackedFoods
+              .filter(food => !search || food.name.toLowerCase().includes(search.toLowerCase()))
+              .map((food, index) => (
+                <Card key={index} className="bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border">
+                  <div 
+                    className="p-3 flex items-center justify-between cursor-pointer"
+                    onClick={() => {
+                      setSelectedFood(food)
+                      setCurrentView('food-detail')
+                    }}
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-dark-text">{food.name}</p>
+                      <p className="text-sm text-gray-500">{food.serving}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium">{food.calories} Cal</span>
+                      <Button 
+                        size="icon" 
+                        className="w-8 h-8 bg-blue-300 hover:bg-blue-500 text-white rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          addItemToMeal(selectedMealType, food)
+                          toast({ description: `Added ${food.name} to ${selectedMealType}` })
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+          </div>
+        </div>
+
+        {/* Can't find your food */}
+        <div className="text-center pt-4">
+          <Button 
+            variant="ghost" 
+            className="text-green-600 hover:text-green-700"
+            onClick={() => toast({ description: "Custom food entry coming soon!" })}
+          >
+            Can't find your food? →
+          </Button>
         </div>
       </div>
     </div>
   )
-} 
+
+  // Food detail view component
+  const FoodDetailView = () => {
+    if (!selectedFood) return null
+
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+        {/* Header */}
+        <div className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setCurrentView('search')}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="icon">
+                <Utensils className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-6">
+          {/* Food Image */}
+          <Card className="bg-blue-400 h-32 rounded-2xl flex items-center justify-center">
+            <h2 className="text-2xl font-bold text-white">{selectedFood.name}</h2>
+          </Card>
+
+          {/* Quantity and Measure */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm text-gray-600">Quantity</Label>
+              <Select defaultValue="1">
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.5">0.5</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="1.5">1.5</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm text-gray-600">Measure</Label>
+              <Select defaultValue={selectedFood.serving || "small"}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">small (6" to 6-7/8" long)</SelectItem>
+                  <SelectItem value="medium">medium</SelectItem>
+                  <SelectItem value="large">large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Macronutrients Breakdown */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Macronutrients Breakdown</h3>
+            
+            <div className="bg-white dark:bg-dark-card rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{selectedFood.calories} Cal</p>
+                  <p className="text-sm text-gray-500">Net wt: 101.0 g</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm">Proteins</span>
+                  </div>
+                  <span className="text-sm font-medium">{selectedFood.protein}g</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm">Fats</span>
+                  </div>
+                  <span className="text-sm font-medium">{selectedFood.fat}g</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm">Carbs</span>
+                  </div>
+                  <span className="text-sm font-medium">{selectedFood.carbs}g</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm">Fiber</span>
+                  </div>
+                  <span className="text-sm font-medium">2.0g</span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium mb-2">Micronutrients Breakdown</h4>
+              </div>
+            </div>
+          </div>
+
+          {/* Add Button */}
+          <Button 
+            className="w-full bg-blue-400 hover:bg-blue-500 text-white py-3 text-lg font-medium"
+            onClick={() => {
+              addItemToMeal(selectedMealType, selectedFood)
+              toast({ description: `Added ${selectedFood.name} to ${selectedMealType}` })
+              setCurrentView('main')
+            }}
+          >
+            ADD
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {currentView === 'main' && <MainView />}
+      {currentView === 'search' && <SearchView />}
+      {currentView === 'food-detail' && <FoodDetailView />}
+    </>
+  )
+}
